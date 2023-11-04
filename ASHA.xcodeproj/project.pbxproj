@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		790551D62AF6B89D0064A98C /* ASHAAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = 79AD39C42AF6B58C0058F739 /* ASHAAudio.c */; };
+		790551D72AF6B8A40064A98C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 790BC6F82AF6B37C00DE1B74 /* Localizable.strings */; };
+		790551DA2AF6BAEE0064A98C /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 790551D92AF6BAEE0064A98C /* CoreFoundation.framework */; };
+		790A6A082AF6B0A300B278FC /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 790A6A072AF6B0A300B278FC /* .gitignore */; };
 		C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */; };
 		C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */; };
 		C5B0D11E2AF4634B00F3BB48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5B0D11D2AF4634B00F3BB48 /* Assets.xcassets */; };
@@ -33,7 +37,27 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		790551CC2AF6B8400064A98C /* Embed System Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			name = "Embed System Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		790551D12AF6B8650064A98C /* ASHAAudio.driver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ASHAAudio.driver; sourceTree = BUILT_PRODUCTS_DIR; };
+		790551D92AF6BAEE0064A98C /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		790A6A072AF6B0A300B278FC /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		790BC6F92AF6B37C00DE1B74 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = ASHAAudio/en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		79AD39C42AF6B58C0058F739 /* ASHAAudio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ASHAAudio.c; sourceTree = "<group>"; };
+		79AD39E42AF6B6BA0058F739 /* SampleCode.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SampleCode.xcconfig; sourceTree = "<group>"; };
+		79AD39E52AF6B7430058F739 /* ASHAAudio-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "ASHAAudio-Info.plist"; sourceTree = "<group>"; };
 		C5B0D1162AF4634A00F3BB48 /* ASHA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ASHA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHAApp.swift; sourceTree = "<group>"; };
 		C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -48,6 +72,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		790551CE2AF6B8650064A98C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				790551DA2AF6BAEE0064A98C /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C5B0D1132AF4634A00F3BB48 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,11 +104,41 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		790A69E52AF6AA9C00B278FC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				790551D92AF6BAEE0064A98C /* CoreFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		790A6A0C2AF6B29E00B278FC /* ASHADriver */ = {
+			isa = PBXGroup;
+			children = (
+				79AD39E52AF6B7430058F739 /* ASHAAudio-Info.plist */,
+				79AD39E32AF6B6BA0058F739 /* Configuration */,
+				79AD39C42AF6B58C0058F739 /* ASHAAudio.c */,
+				790BC6F82AF6B37C00DE1B74 /* Localizable.strings */,
+			);
+			path = ASHADriver;
+			sourceTree = "<group>";
+		};
+		79AD39E32AF6B6BA0058F739 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				79AD39E42AF6B6BA0058F739 /* SampleCode.xcconfig */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
 		C5B0D10D2AF4634A00F3BB48 = {
 			isa = PBXGroup;
 			children = (
+				790A6A0C2AF6B29E00B278FC /* ASHADriver */,
+				790A6A072AF6B0A300B278FC /* .gitignore */,
 				C5B0D1182AF4634A00F3BB48 /* ASHA */,
 				C5B0D1172AF4634A00F3BB48 /* Products */,
+				790A69E52AF6AA9C00B278FC /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -86,6 +148,7 @@
 				C5B0D1162AF4634A00F3BB48 /* ASHA.app */,
 				C5B0D1272AF4634B00F3BB48 /* ASHATests.xctest */,
 				C5B0D1312AF4634B00F3BB48 /* ASHAUITests.xctest */,
+				790551D12AF6B8650064A98C /* ASHAAudio.driver */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,6 +179,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		790551D02AF6B8650064A98C /* ASHAAudio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 790551D22AF6B8650064A98C /* Build configuration list for PBXNativeTarget "ASHAAudio" */;
+			buildPhases = (
+				790551CD2AF6B8650064A98C /* Sources */,
+				790551CE2AF6B8650064A98C /* Frameworks */,
+				790551CF2AF6B8650064A98C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ASHAAudio;
+			productName = ASHAAudio;
+			productReference = 790551D12AF6B8650064A98C /* ASHAAudio.driver */;
+			productType = "com.apple.product-type.bundle";
+		};
 		C5B0D1152AF4634A00F3BB48 /* ASHA */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C5B0D13B2AF4634B00F3BB48 /* Build configuration list for PBXNativeTarget "ASHA" */;
@@ -123,6 +203,7 @@
 				C5B0D1122AF4634A00F3BB48 /* Sources */,
 				C5B0D1132AF4634A00F3BB48 /* Frameworks */,
 				C5B0D1142AF4634A00F3BB48 /* Resources */,
+				790551CC2AF6B8400064A98C /* Embed System Extensions */,
 			);
 			buildRules = (
 			);
@@ -179,8 +260,12 @@
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					790551D02AF6B8650064A98C = {
+						CreatedOnToolsVersion = 15.0.1;
+					};
 					C5B0D1152AF4634A00F3BB48 = {
 						CreatedOnToolsVersion = 15.0.1;
+						LastSwiftMigration = 1500;
 					};
 					C5B0D1262AF4634B00F3BB48 = {
 						CreatedOnToolsVersion = 15.0.1;
@@ -208,16 +293,26 @@
 				C5B0D1152AF4634A00F3BB48 /* ASHA */,
 				C5B0D1262AF4634B00F3BB48 /* ASHATests */,
 				C5B0D1302AF4634B00F3BB48 /* ASHAUITests */,
+				790551D02AF6B8650064A98C /* ASHAAudio */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		790551CF2AF6B8650064A98C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				790551D72AF6B8A40064A98C /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C5B0D1142AF4634A00F3BB48 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				C5B0D1212AF4634B00F3BB48 /* Preview Assets.xcassets in Resources */,
+				790A6A082AF6B0A300B278FC /* .gitignore in Resources */,
 				C5B0D11E2AF4634B00F3BB48 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -239,6 +334,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		790551CD2AF6B8650064A98C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				790551D62AF6B89D0064A98C /* ASHAAudio.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C5B0D1122AF4634A00F3BB48 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -280,7 +383,57 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin PBXVariantGroup section */
+		790BC6F82AF6B37C00DE1B74 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				790BC6F92AF6B37C00DE1B74 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
+		790551D32AF6B8650064A98C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Audio/Plug-Ins/HAL";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = shareefali.ASHAAudio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Debug;
+		};
+		790551D42AF6B8650064A98C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=0";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSPrincipalClass = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Audio/Plug-Ins/HAL";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = shareefali.ASHAAudio;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Release;
+		};
 		C5B0D1392AF4634B00F3BB48 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -404,13 +557,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ASHA/ASHA.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = R87Q688498;
+				DEVELOPMENT_TEAM = 2FTR9775R5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -426,6 +580,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonkaiser.ASHA;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -435,13 +590,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ASHA/ASHA.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = R87Q688498;
+				DEVELOPMENT_TEAM = 2FTR9775R5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -536,6 +692,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		790551D22AF6B8650064A98C /* Build configuration list for PBXNativeTarget "ASHAAudio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				790551D32AF6B8650064A98C /* Debug */,
+				790551D42AF6B8650064A98C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C5B0D1112AF4634A00F3BB48 /* Build configuration list for PBXProject "ASHA" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
