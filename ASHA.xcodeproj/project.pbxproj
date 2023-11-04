@@ -11,9 +11,9 @@
 		C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */; };
 		C5B0D11E2AF4634B00F3BB48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5B0D11D2AF4634B00F3BB48 /* Assets.xcassets */; };
 		C5B0D1212AF4634B00F3BB48 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5B0D1202AF4634B00F3BB48 /* Preview Assets.xcassets */; };
-		C5B0D12C2AF4634B00F3BB48 /* ASHATests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D12B2AF4634B00F3BB48 /* ASHATests.swift */; };
-		C5B0D1362AF4634B00F3BB48 /* ASHAUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1352AF4634B00F3BB48 /* ASHAUITests.swift */; };
-		C5B0D1382AF4634B00F3BB48 /* ASHAUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1372AF4634B00F3BB48 /* ASHAUITestsLaunchTests.swift */; };
+		C5B0D14A2AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1492AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift */; };
+		C5B0D14C2AF67AD300F3BB48 /* BluetoothViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D14B2AF67AD300F3BB48 /* BluetoothViewModel.swift */; };
+		C5B0D14E2AF689C400F3BB48 /* AudioControlPointModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D14D2AF689C400F3BB48 /* AudioControlPointModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,10 +41,10 @@
 		C5B0D1202AF4634B00F3BB48 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		C5B0D1222AF4634B00F3BB48 /* ASHA.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ASHA.entitlements; sourceTree = "<group>"; };
 		C5B0D1272AF4634B00F3BB48 /* ASHATests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ASHATests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C5B0D12B2AF4634B00F3BB48 /* ASHATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHATests.swift; sourceTree = "<group>"; };
 		C5B0D1312AF4634B00F3BB48 /* ASHAUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ASHAUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C5B0D1352AF4634B00F3BB48 /* ASHAUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHAUITests.swift; sourceTree = "<group>"; };
-		C5B0D1372AF4634B00F3BB48 /* ASHAUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHAUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		C5B0D1492AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadOnlyPropertiesModel.swift; sourceTree = "<group>"; };
+		C5B0D14B2AF67AD300F3BB48 /* BluetoothViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothViewModel.swift; sourceTree = "<group>"; };
+		C5B0D14D2AF689C400F3BB48 /* AudioControlPointModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioControlPointModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,8 +76,6 @@
 			isa = PBXGroup;
 			children = (
 				C5B0D1182AF4634A00F3BB48 /* ASHA */,
-				C5B0D12A2AF4634B00F3BB48 /* ASHATests */,
-				C5B0D1342AF4634B00F3BB48 /* ASHAUITests */,
 				C5B0D1172AF4634A00F3BB48 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -97,6 +95,9 @@
 			children = (
 				C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */,
 				C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */,
+				C5B0D14B2AF67AD300F3BB48 /* BluetoothViewModel.swift */,
+				C5B0D1492AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift */,
+				C5B0D14D2AF689C400F3BB48 /* AudioControlPointModel.swift */,
 				C5B0D11D2AF4634B00F3BB48 /* Assets.xcassets */,
 				C5B0D1222AF4634B00F3BB48 /* ASHA.entitlements */,
 				C5B0D11F2AF4634B00F3BB48 /* Preview Content */,
@@ -110,23 +111,6 @@
 				C5B0D1202AF4634B00F3BB48 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		C5B0D12A2AF4634B00F3BB48 /* ASHATests */ = {
-			isa = PBXGroup;
-			children = (
-				C5B0D12B2AF4634B00F3BB48 /* ASHATests.swift */,
-			);
-			path = ASHATests;
-			sourceTree = "<group>";
-		};
-		C5B0D1342AF4634B00F3BB48 /* ASHAUITests */ = {
-			isa = PBXGroup;
-			children = (
-				C5B0D1352AF4634B00F3BB48 /* ASHAUITests.swift */,
-				C5B0D1372AF4634B00F3BB48 /* ASHAUITestsLaunchTests.swift */,
-			);
-			path = ASHAUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -259,7 +243,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C5B0D14A2AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift in Sources */,
+				C5B0D14C2AF67AD300F3BB48 /* BluetoothViewModel.swift in Sources */,
 				C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */,
+				C5B0D14E2AF689C400F3BB48 /* AudioControlPointModel.swift in Sources */,
 				C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -268,7 +255,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C5B0D12C2AF4634B00F3BB48 /* ASHATests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,8 +262,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C5B0D1362AF4634B00F3BB48 /* ASHAUITests.swift in Sources */,
-				C5B0D1382AF4634B00F3BB48 /* ASHAUITestsLaunchTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -421,6 +405,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ASHA/ASHA.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -429,6 +414,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires bluetooth access to function properly.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires bluetooth access to function properly.";
+				INFOPLIST_KEY_NSBluetoothWhileInUseUsageDescription = "This app requires bluetooth access to function properly.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -448,6 +436,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ASHA/ASHA.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -456,6 +445,9 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app requires bluetooth access to function properly.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app requires bluetooth access to function properly.";
+				INFOPLIST_KEY_NSBluetoothWhileInUseUsageDescription = "This app requires bluetooth access to function properly.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
