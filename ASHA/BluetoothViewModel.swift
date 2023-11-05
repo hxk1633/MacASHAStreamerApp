@@ -32,8 +32,6 @@ class BluetoothViewModel: NSObject, ObservableObject {
     override init() {
 
         super.init()
-        let state = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 16);
-        g722_encode_init(state, 64000, 0);
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
         self.peripheralManager = CBPeripheralManager(delegate: self, queue: .main)
     }
@@ -102,7 +100,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     }
     
     func writeAudioStream(from inputPath: String) {
-        guard let inputBuffer = readPCMBuffer(url: URL(string: inputPath)!) else {
+        print(inputPath)
+        guard let inputBuffer = readPCMBuffer(url: URL.init(fileURLWithPath: inputPath, isDirectory: false)) else {
             fatalError("failed to read \(inputPath)")
         }
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
@@ -124,8 +123,21 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         }
 
         outputBuffer.frameLength = inputBuffer.frameLength
-        
         // TODO: Encode buffer as G.722 frame and write to L2Cap channel using write function
+        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 16)
+        g722_encode_init(buffer, 64000, 0)
+
+        let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(outputBuffer.frameLength))
+        g722_encode(buffer, encodedData, outputInt16ChannelData[0], Int32(outputBuffer.frameLength))
+
+        // TODO: Write the encoded data to a destination (e.g., a file or network)
+        // Replace 'destinationURL' with the actual destination URL where you want to write the data.
+        write(stuff: encodedData, to: self.l2capChannel, withMaxLength: 160)
+        
+        // Don't forget to deallocate memory when you're done
+        buffer.deallocate()
+        encodedData.deallocate()
+        
     }
 
     // Test function write buffer from wav file to another wave file
@@ -191,6 +203,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available")
                 // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
+                writeAudioStream(from: "/Users/harrisonkaiser/Desktop/ASHA/ASHA/batman_theme_x.wav")
 
                 let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {
