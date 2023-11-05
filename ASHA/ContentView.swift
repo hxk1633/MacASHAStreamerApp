@@ -19,6 +19,11 @@ struct ContentView: View {
             } else {
                 Text("Audio status is not available\n")
             }
+            if let psmId = bluetoothViewModel.psm {
+                Text("PSM: \(psmId)\n")
+            } else {
+                Text("PSM is not available\n")
+            }
         } else {
             Text("Not connected to any hearing device")
                 .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)

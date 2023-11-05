@@ -4,8 +4,9 @@
 //
 //  Created by Harrison Kaiser on 11/4/23.
 //
-
+import Foundation
 import CoreBluetooth
+import AVFoundation
 
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
@@ -16,15 +17,21 @@ let lePsmOutPointCharacteristicCBUUID      = CBUUID(string: "2d410339-82b6-42aa-
 
 class BluetoothViewModel: NSObject, ObservableObject {
     private var centralManager: CBCentralManager?
-    private var hearingDevicePeripheral: CBPeripheral!
+    private var peripheralManager: CBPeripheralManager?
+    private var l2capChannel: CBL2CAPChannel?
+    private var hearingDevicePeripheral: CBPeripheral?
+    private var outputStream: OutputStream?
+    private var inputStream: InputStream?
     @Published var isConnected: Bool = false
     @Published var peripheralNames: [String] = []
     @Published var readOnlyPropertiesState: ReadOnlyProperties?
     @Published var audioStatusPointState: AudioStatusPoint?
+    @Published var psm: CBL2CAPPSM?
     
     override init() {
         super.init()
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
+        self.peripheralManager = CBPeripheralManager(delegate: self, queue: .main)
     }
 }
 
@@ -39,20 +46,63 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         print(peripheral)
         peripheralNames.append(peripheral.name ?? "Unnamed")
         hearingDevicePeripheral = peripheral
-        hearingDevicePeripheral.delegate = self
-        self.centralManager?.stopScan()
-        self.centralManager?.connect(hearingDevicePeripheral)
+        if let hearingDevice = hearingDevicePeripheral {
+            hearingDevice.delegate = self
+            self.centralManager?.stopScan()
+            self.centralManager?.connect(hearingDevice)
+        }
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         print("Connected!")
         isConnected = true
-        hearingDevicePeripheral.discoverServices([ashaServiceCBUUID])
+        if let hearingDevice = hearingDevicePeripheral {
+            hearingDevice.discoverServices([ashaServiceCBUUID])
+        }
     }
     
 }
 
-extension BluetoothViewModel: CBPeripheralDelegate {
+extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
+    
+    func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
+        print("Stream Event occurred: \(eventCode)")
+        switch eventCode {
+            case Stream.Event.openCompleted:
+                print("Stream is open")
+            case Stream.Event.endEncountered:
+                print("End Encountered")
+            case Stream.Event.hasBytesAvailable:
+                print("Bytes are available")
+                if let iStream = aStream as? InputStream {
+                    print("Input stream")
+                    let bufLength = 1024
+                    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufLength)
+                    let bytesRead = iStream.read(buffer, maxLength: bufLength)
+                    print("bytesRead = \(bytesRead)")
+                    if let string = String(bytesNoCopy: buffer, length: bytesRead, encoding: .utf8, freeWhenDone: false) {
+                        print("Received data: \(string)")
+                    }
+                }
+            case Stream.Event.hasSpaceAvailable:
+                print("Space is available")
+                // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
+                // We need to use these methods in the following order:
+                //  1. hearingDevicePeripheral.writeValue(Data, for: CBCharacteristic, type: CBCharacteristicWriteType)
+                //  2. AVAudioEngine or audio libary for processing audio data
+                //  3. write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int)
+            case Stream.Event.errorOccurred:
+                print("Stream error")
+            default:
+                print("Unknown stream event")
+            }
+    }
+
+    func write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int) {
+        let result = channel?.outputStream.write(stuff, maxLength: maxLength)
+        print("Write result: \(String(describing: result))")
+    }
+    
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
         for service in services {
@@ -79,16 +129,53 @@ extension BluetoothViewModel: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         switch characteristic.uuid {
             case readOnlyPropertiesCharacteristicCBUUID:
-                let readOnlyPropertiesStruct = readOnlyProperties(from: characteristic)
-                print(readOnlyPropertiesStruct)
-                readOnlyPropertiesState = readOnlyPropertiesStruct
+                readOnlyPropertiesState = readOnlyProperties(from: characteristic)
             case audioStatusCharacteristicCBUUID:
-                let audioStatus = audioStatusPoint(from: characteristic)
-                audioStatusPointState = audioStatus
+                audioStatusPointState = audioStatusPoint(from: characteristic)
+            case lePsmOutPointCharacteristicCBUUID:
+                if let psmValue = psmIdentifier(from: characteristic) {
+                    print(psmValue)
+                    psm = psmValue
+                    peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
+                }
             default:
                 print("Unhandled Characteristic UUID: \(characteristic.uuid)")
-            }
         }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        print("Peripheral successfully set value for characteristic: \(characteristic)")
+    }
+
+    func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+        print("Peripheral \(peripheral) is again ready to send characteristic updates")
+    }
+ 
+    func peripheral(_ peripheral: CBPeripheral, didOpen channel: CBL2CAPChannel?, error: Error?) {
+        if let error = error {
+               print("Error opening l2cap channel - \(error.localizedDescription)")
+               return
+        }
+        guard let channel = channel else {
+           return
+        }
+        print("Opened channel \(channel)")
+        self.l2capChannel = channel
+        self.outputStream = channel.outputStream
+        self.outputStream!.delegate = self
+        self.outputStream!.schedule(in: .main, forMode: .default)
+        self.outputStream!.open()
+
+        self.inputStream = channel.inputStream
+        self.inputStream!.delegate = self
+        self.inputStream!.schedule(in: .main, forMode: .default)
+        self.inputStream!.open()
+    }
+
+    private func psmIdentifier(from characteristic: CBCharacteristic) -> UInt16? {
+        guard let characteristicData = characteristic.value else { return nil }
+        let psmIdentifier = UInt16(characteristicData[0]) | (UInt16(characteristicData[1]) << 8)
+        return psmIdentifier
     }
     
     private func readOnlyProperties(from characteristic: CBCharacteristic) -> ReadOnlyProperties? {
@@ -109,3 +196,12 @@ extension BluetoothViewModel: CBPeripheralDelegate {
                 return nil
         }
     }
+}
+
+extension BluetoothViewModel: CBPeripheralManagerDelegate {
+    func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+        if peripheral.state == .poweredOn {
+            peripheral.publishL2CAPChannel(withEncryption: true)
+        }
+    }
+}
