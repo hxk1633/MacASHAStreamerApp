@@ -8,6 +8,7 @@ import Foundation
 import CoreBluetooth
 import AVFoundation
 
+
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
 let audioControlPointCharacteristicCBUUID  = CBUUID(string: "f0d4de7e-4a88-476c-9d9f-1937b0996cc0")
@@ -29,7 +30,10 @@ class BluetoothViewModel: NSObject, ObservableObject {
     @Published var psm: CBL2CAPPSM?
     
     override init() {
+
         super.init()
+        let state = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 16);
+        g722_encode_init(state, 64000, 0);
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
         self.peripheralManager = CBPeripheralManager(delegate: self, queue: .main)
     }
