@@ -8,7 +8,6 @@ import Foundation
 import CoreBluetooth
 import AVFoundation
 
-
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
 let audioControlPointCharacteristicCBUUID  = CBUUID(string: "f0d4de7e-4a88-476c-9d9f-1937b0996cc0")
@@ -21,6 +20,7 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var peripheralManager: CBPeripheralManager?
     private var l2capChannel: CBL2CAPChannel?
     private var hearingDevicePeripheral: CBPeripheral?
+    private var audioControlPointCharacteristic: CBCharacteristic?
     private var outputStream: OutputStream?
     private var inputStream: InputStream?
     @Published var isConnected: Bool = false
@@ -68,12 +68,112 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
 }
 
 extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
+
+    func readPCMBuffer(url: URL) -> AVAudioPCMBuffer? {
+        guard let input = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
+            return nil
+        }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: input.processingFormat, frameCapacity: AVAudioFrameCount(input.length)) else {
+            return nil
+        }
+        do {
+            try input.read(into: buffer)
+        } catch {
+            return nil
+        }
+
+        return buffer
+    }
+
+    func writePCMBuffer(url: URL, buffer: AVAudioPCMBuffer) throws {
+        let settings: [String: Any] = [
+            AVFormatIDKey: buffer.format.settings[AVFormatIDKey] ?? kAudioFormatLinearPCM,
+            AVNumberOfChannelsKey: buffer.format.settings[AVNumberOfChannelsKey] ?? 2,
+            AVSampleRateKey: buffer.format.settings[AVSampleRateKey] ?? 44100,
+            AVLinearPCMBitDepthKey: buffer.format.settings[AVLinearPCMBitDepthKey] ?? 16
+        ]
+
+        do {
+            let output = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatInt16, interleaved: false)
+            try output.write(from: buffer)
+        } catch {
+            throw error
+        }
+    }
     
+    func writeAudioStream(from inputPath: String) {
+        guard let inputBuffer = readPCMBuffer(url: URL(string: inputPath)!) else {
+            fatalError("failed to read \(inputPath)")
+        }
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
+            fatalError("failed to create a buffer for writing")
+        }
+        guard let inputInt16ChannelData = inputBuffer.int16ChannelData else {
+            fatalError("failed to obtain underlying input buffer")
+        }
+        guard let outputInt16ChannelData = outputBuffer.int16ChannelData else {
+            fatalError("failed to obtain underlying output buffer")
+        }
+        for channel in 0 ..< Int(inputBuffer.format.channelCount) {
+            let p1: UnsafeMutablePointer<Int16> = inputInt16ChannelData[channel]
+            let p2: UnsafeMutablePointer<Int16> = outputInt16ChannelData[channel]
+
+            for i in 0 ..< Int(inputBuffer.frameLength) {
+                p2[i] = p1[i]
+            }
+        }
+
+        outputBuffer.frameLength = inputBuffer.frameLength
+        
+        // TODO: Encode buffer as G.722 frame and write to L2Cap channel using write function
+    }
+
+    // Test function write buffer from wav file to another wave file
+    func copyPCMBuffer(from inputPath: String, to outputPath: String) {
+        guard let inputBuffer = readPCMBuffer(url: URL(string: inputPath)!) else {
+            fatalError("failed to read \(inputPath)")
+        }
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
+            fatalError("failed to create a buffer for writing")
+        }
+        guard let inputInt16ChannelData = inputBuffer.int16ChannelData else {
+            fatalError("failed to obtain underlying input buffer")
+        }
+        guard let outputInt16ChannelData = outputBuffer.int16ChannelData else {
+            fatalError("failed to obtain underlying output buffer")
+        }
+        for channel in 0 ..< Int(inputBuffer.format.channelCount) {
+            let p1: UnsafeMutablePointer<Int16> = inputInt16ChannelData[channel]
+            let p2: UnsafeMutablePointer<Int16> = outputInt16ChannelData[channel]
+
+            for i in 0 ..< Int(inputBuffer.frameLength) {
+                p2[i] = p1[i]
+            }
+        }
+
+        outputBuffer.frameLength = inputBuffer.frameLength
+
+        do {
+            try writePCMBuffer(url: URL(string: outputPath)!, buffer: outputBuffer)
+        } catch {
+            fatalError("failed to write \(outputPath)")
+        }
+    }
+
     func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
         print("Stream Event occurred: \(eventCode)")
         switch eventCode {
             case Stream.Event.openCompleted:
                 print("Stream is open")
+                let codec = Codec.g722at16kHz
+                let audiotype = AudioType.Media
+                let volume = 0
+                let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
+                if let startStream = startAudioStream {
+                    if let characteristic = audioControlPointCharacteristic {
+                        hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+                    }
+                }
             case Stream.Event.endEncountered:
                 print("End Encountered")
             case Stream.Event.hasBytesAvailable:
@@ -91,10 +191,13 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available")
                 // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
-                // We need to use these methods in the following order:
-                //  1. hearingDevicePeripheral.writeValue(Data, for: CBCharacteristic, type: CBCharacteristicWriteType)
-                //  2. AVAudioEngine or audio libary for processing audio data
-                //  3. write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int)
+
+                let stopAudioStream = AudioControlPointStop()?.asData()
+                if let stopStream = stopAudioStream {
+                    if let characteristic = audioControlPointCharacteristic {
+                        hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+                    }
+                }
             case Stream.Event.errorOccurred:
                 print("Stream error")
             default:
@@ -119,6 +222,9 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         guard let characteristics = service.characteristics else { return }
         for characteristic in characteristics {
             print(characteristic)
+            if characteristic.uuid === audioControlPointCharacteristicCBUUID {
+                audioControlPointCharacteristic = characteristic
+            }
             if characteristic.properties.contains(.read) {
                 print("\(characteristic.uuid): properties contains .read")
                 peripheral.readValue(for: characteristic)
