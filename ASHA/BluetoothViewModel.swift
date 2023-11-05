@@ -203,7 +203,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available")
                 // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
-                writeAudioStream(from: "/Users/harrisonkaiser/Desktop/ASHA/ASHA/batman_theme_x.wav")
+                writeAudioStream(from: "./batman_theme_x.wav")
 
                 let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {
