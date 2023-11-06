@@ -100,8 +100,9 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     }
     
     func writeAudioStream(from inputPath: String) {
-        print(inputPath)
-        guard let inputBuffer = readPCMBuffer(url: URL.init(fileURLWithPath: inputPath, isDirectory: false)) else {
+        let path = Bundle.main.path(forResource: inputPath, ofType: nil)!
+        print(path)
+        guard let inputBuffer = readPCMBuffer(url: URL(string: path)!) else {
             fatalError("failed to read \(inputPath)")
         }
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
@@ -203,7 +204,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available")
                 // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
-                writeAudioStream(from: "./batman_theme_x.wav")
+                writeAudioStream(from: "batman_theme_x.wav")
 
                 let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {

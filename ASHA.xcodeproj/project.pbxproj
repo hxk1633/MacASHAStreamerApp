@@ -41,7 +41,7 @@
 		79B2F4F12AF7F85C00CAE357 /* g722_decode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = g722_decode.c; sourceTree = "<group>"; };
 		79B2F4F32AF7F86300CAE357 /* g722_encode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = g722_encode.c; sourceTree = "<group>"; };
 		79B2F4F52AF7F87300CAE357 /* g722.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = g722.h; sourceTree = "<group>"; };
-		79B2F4F62AF85F1600CAE357 /* batman_theme_x.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = batman_theme_x.wav; sourceTree = "<group>"; };
+		79B2F4F62AF85F1600CAE357 /* batman_theme_x.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = batman_theme_x.wav; path = /Users/harrisonkaiser/Desktop/ASHA/ASHA/batman_theme_x.wav; sourceTree = "<absolute>"; };
 		C5B0D1162AF4634A00F3BB48 /* ASHA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ASHA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHAApp.swift; sourceTree = "<group>"; };
 		C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -436,7 +436,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = 2FTR9775R5;
+				DEVELOPMENT_TEAM = R87Q688498;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -470,7 +470,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = 2FTR9775R5;
+				DEVELOPMENT_TEAM = R87Q688498;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
