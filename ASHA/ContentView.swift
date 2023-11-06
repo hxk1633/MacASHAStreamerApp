@@ -9,21 +9,45 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject private var bluetoothViewModel = BluetoothViewModel()
+    @State var volume: Float = 0
     var body: some View {
         if bluetoothViewModel.isConnected {
-            Text("Connected to \(bluetoothViewModel.peripheralNames.joined(separator: ", "))")
-                .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)
-            Text(buildReadOnlyPropertiesText())
-            if let audioStatus = bluetoothViewModel.audioStatusPointState {
-                Text("Audio status: \(audioStatus.rawValue)\n")
-            } else {
-                Text("Audio status is not available\n")
+            VStack {
+                Text("Connected to \(bluetoothViewModel.peripheralNames.joined(separator: ", "))")
+                    .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)
+                Slider(
+                    value: Binding(get: {
+                        self.volume
+                    }, set: { (newVal) in
+                        self.volume = newVal
+                        bluetoothViewModel.setVolume(volumeLevel: UInt8(newVal))
+                    }),
+                    in: 0...128,
+                    step: 1,
+                    onEditingChanged: { editing in
+                        if editing {
+                            print("editing")
+                        }
+                    },
+                    minimumValueLabel: Text("0"),
+                    maximumValueLabel: Text("127"),
+                    label: { Text("Volume") }
+                )
+                .padding(.all)
+                Text(String(volume))
+                Text(buildReadOnlyPropertiesText())
+                if let audioStatus = bluetoothViewModel.audioStatusPointState {
+                    Text("Audio status: \(audioStatus.rawValue)\n")
+                } else {
+                    Text("Audio status is not available\n")
+                }
+                if let psmId = bluetoothViewModel.psm {
+                    Text("PSM: \(psmId)\n")
+                } else {
+                    Text("PSM is not available\n")
+                }
             }
-            if let psmId = bluetoothViewModel.psm {
-                Text("PSM: \(psmId)\n")
-            } else {
-                Text("PSM is not available\n")
-            }
+            
         } else {
             Text("Not connected to any hearing device")
                 .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)

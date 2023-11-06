@@ -21,6 +21,7 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var l2capChannel: CBL2CAPChannel?
     private var hearingDevicePeripheral: CBPeripheral?
     private var audioControlPointCharacteristic: CBCharacteristic?
+    private var volumeCharacteristic: CBCharacteristic?
     private var outputStream: OutputStream?
     private var inputStream: InputStream?
     @Published var isConnected: Bool = false
@@ -28,9 +29,9 @@ class BluetoothViewModel: NSObject, ObservableObject {
     @Published var readOnlyPropertiesState: ReadOnlyProperties?
     @Published var audioStatusPointState: AudioStatusPoint?
     @Published var psm: CBL2CAPPSM?
+    @Published var volume: UInt8?
     
     override init() {
-
         super.init()
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
         self.peripheralManager = CBPeripheralManager(delegate: self, queue: .main)
@@ -114,6 +115,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         guard let outputInt16ChannelData = outputBuffer.int16ChannelData else {
             fatalError("failed to obtain underlying output buffer")
         }
+        print("Channel count: \(Int(inputBuffer.format.channelCount))")
         for channel in 0 ..< Int(inputBuffer.format.channelCount) {
             let p1: UnsafeMutablePointer<Int16> = inputInt16ChannelData[channel]
             let p2: UnsafeMutablePointer<Int16> = outputInt16ChannelData[channel]
@@ -180,10 +182,12 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Stream is open")
                 let codec = Codec.g722at16kHz
                 let audiotype = AudioType.Media
-                let volume = 0
+                let volume = 30
                 let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
                 if let startStream = startAudioStream {
+                    print("Starting stream...")
                     if let characteristic = audioControlPointCharacteristic {
+                        print("Writing value for audio control characteristic")
                         hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
                     }
                 }
@@ -205,15 +209,14 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Space is available")
                 // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
                 writeAudioStream(from: "batman_theme_x.wav")
-
+            case Stream.Event.errorOccurred:
+                print("Stream error")
                 let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {
                     if let characteristic = audioControlPointCharacteristic {
                         hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
                     }
                 }
-            case Stream.Event.errorOccurred:
-                print("Stream error")
             default:
                 print("Unknown stream event")
             }
@@ -235,9 +238,14 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard let characteristics = service.characteristics else { return }
         for characteristic in characteristics {
-            print(characteristic)
-            if characteristic.uuid === audioControlPointCharacteristicCBUUID {
+            print("Characteristic uuid discovered: \(characteristic)")
+            if characteristic.uuid.data == audioControlPointCharacteristicCBUUID.data {
+                print("set audio control characteristic")
                 audioControlPointCharacteristic = characteristic
+            }
+            if characteristic.uuid.data == volumeCharacteristicCBUUID.data {
+                print("set volume characteristic")
+                volumeCharacteristic = characteristic
             }
             if characteristic.properties.contains(.read) {
                 print("\(characteristic.uuid): properties contains .read")
@@ -256,6 +264,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 readOnlyPropertiesState = readOnlyProperties(from: characteristic)
             case audioStatusCharacteristicCBUUID:
                 audioStatusPointState = audioStatusPoint(from: characteristic)
+                print("audio status update: \(audioStatusPointState)")
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {
                     print(psmValue)
@@ -268,6 +277,10 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        if let error = error {
+               print("Error setting a value for characteristic - \(error.localizedDescription)")
+               return
+        }
         print("Peripheral successfully set value for characteristic: \(characteristic)")
     }
 
@@ -294,6 +307,14 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         self.inputStream!.delegate = self
         self.inputStream!.schedule(in: .main, forMode: .default)
         self.inputStream!.open()
+    }
+    
+    public func setVolume(volumeLevel: UInt8) {
+        print("setVolume called with \(volumeLevel)")
+        if let characteristic = volumeCharacteristic {
+            print("Volume set to \(volumeLevel)")
+            hearingDevicePeripheral?.writeValue(Data([volumeLevel]), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+        }
     }
 
     private func psmIdentifier(from characteristic: CBCharacteristic) -> UInt16? {
