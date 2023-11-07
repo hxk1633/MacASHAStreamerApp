@@ -15,25 +15,25 @@ struct ContentView: View {
             VStack {
                 Text("Connected to \(bluetoothViewModel.peripheralNames.joined(separator: ", "))")
                     .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)
-                Slider(
-                    value: Binding(get: {
-                        self.volume
-                    }, set: { (newVal) in
-                        self.volume = newVal
-                        bluetoothViewModel.setVolume(volumeLevel: UInt8(newVal))
-                    }),
-                    in: 0...128,
-                    step: 1,
-                    onEditingChanged: { editing in
-                        if editing {
-                            print("editing")
-                        }
-                    },
-                    minimumValueLabel: Text("0"),
-                    maximumValueLabel: Text("127"),
-                    label: { Text("Volume") }
-                )
-                .padding(.all)
+//                Slider(
+//                    value: Binding(get: {
+//                        self.volume
+//                    }, set: { (newVal) in
+//                        self.volume = newVal
+//                        bluetoothViewModel.setVolume(volumeLevel: UInt8(newVal))
+//                    }),
+//                    in: 0...128,
+//                    step: 1,
+//                    onEditingChanged: { editing in
+//                        if editing {
+//                            print("editing")
+//                        }
+//                    },
+//                    minimumValueLabel: Text("0"),
+//                    maximumValueLabel: Text("127"),
+//                    label: { Text("Volume") }
+//                )
+//                .padding(.all)
                 Text(String(volume))
                 Text(buildReadOnlyPropertiesText())
                 if let audioStatus = bluetoothViewModel.audioStatusPointState {

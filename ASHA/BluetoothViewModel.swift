@@ -7,6 +7,7 @@
 import Foundation
 import CoreBluetooth
 import AVFoundation
+import IOBluetooth
 
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
@@ -22,8 +23,11 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var hearingDevicePeripheral: CBPeripheral?
     private var audioControlPointCharacteristic: CBCharacteristic?
     private var volumeCharacteristic: CBCharacteristic?
+    private var audioStatusCharacteristic: CBCharacteristic?
     private var outputStream: OutputStream?
     private var inputStream: InputStream?
+    private var queueQueue = DispatchQueue(label: "queue queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem, target: nil)
+    private var outputData = Data()
     @Published var isConnected: Bool = false
     @Published var peripheralNames: [String] = []
     @Published var readOnlyPropertiesState: ReadOnlyProperties?
@@ -46,7 +50,6 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
     }
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        print(peripheral)
         peripheralNames.append(peripheral.name ?? "Unnamed")
         hearingDevicePeripheral = peripheral
         if let hearingDevice = hearingDevicePeripheral {
@@ -83,96 +86,74 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
 
         return buffer
     }
-
-    func writePCMBuffer(url: URL, buffer: AVAudioPCMBuffer) throws {
-        let settings: [String: Any] = [
-            AVFormatIDKey: buffer.format.settings[AVFormatIDKey] ?? kAudioFormatLinearPCM,
-            AVNumberOfChannelsKey: buffer.format.settings[AVNumberOfChannelsKey] ?? 2,
-            AVSampleRateKey: buffer.format.settings[AVSampleRateKey] ?? 44100,
-            AVLinearPCMBitDepthKey: buffer.format.settings[AVLinearPCMBitDepthKey] ?? 16
-        ]
-
+    
+    func readAndDownsamplePCMBuffer(url: URL, targetSampleRate: Double) -> AVAudioPCMBuffer? {
+        print("Reading audio file...")
+        guard let input = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
+            return nil
+        }
+        
+        print("Creating AVAudioFormat...")
+        // Create an AVAudioFormat for the target sample rate
+        let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: targetSampleRate, channels: 1, interleaved: false)
+        
+        print("Creating AVAudioConverter...")
+        // Create an AVAudioConverter to perform the downsampling
+        guard let converter = AVAudioConverter(from: input.processingFormat, to: targetFormat!) else {
+            return nil
+        }
+        
+        print("Creating AVAudioPCMBuffer...")
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: AVAudioFrameCount(input.length)) else {
+            return nil
+        }
+        
         do {
-            let output = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatInt16, interleaved: false)
-            try output.write(from: buffer)
+            try input.read(into: buffer)
+            
+            print("Creating buffer for downsampled audio...")
+            // Create a buffer for the downsampled audio
+            guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: buffer.frameLength) else {
+                return nil
+            }
+            
+            print("Downsampling audio...")
+            // Perform the downsampling
+            do {
+                try converter.convert(to: downsampledBuffer, from: buffer)
+            } catch {
+                print("Error during audio conversion: \(error)")
+            }
+            
+            return downsampledBuffer
         } catch {
-            throw error
+            return nil
         }
     }
     
     func writeAudioStream(from inputPath: String) {
         let path = Bundle.main.path(forResource: inputPath, ofType: nil)!
-        print(path)
-        guard let inputBuffer = readPCMBuffer(url: URL(string: path)!) else {
+        print("Audio file path: \(path)")
+        guard let inputBuffer = readAndDownsamplePCMBuffer(url: URL(string: path)!, targetSampleRate: 16000.0) else {
             fatalError("failed to read \(inputPath)")
         }
-        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
-            fatalError("failed to create a buffer for writing")
-        }
+
         guard let inputInt16ChannelData = inputBuffer.int16ChannelData else {
             fatalError("failed to obtain underlying input buffer")
         }
-        guard let outputInt16ChannelData = outputBuffer.int16ChannelData else {
-            fatalError("failed to obtain underlying output buffer")
-        }
-        print("Channel count: \(Int(inputBuffer.format.channelCount))")
-        for channel in 0 ..< Int(inputBuffer.format.channelCount) {
-            let p1: UnsafeMutablePointer<Int16> = inputInt16ChannelData[channel]
-            let p2: UnsafeMutablePointer<Int16> = outputInt16ChannelData[channel]
 
-            for i in 0 ..< Int(inputBuffer.frameLength) {
-                p2[i] = p1[i]
-            }
-        }
-
-        outputBuffer.frameLength = inputBuffer.frameLength
-        // TODO: Encode buffer as G.722 frame and write to L2Cap channel using write function
-        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 16)
+        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: Int(inputBuffer.frameLength))
         g722_encode_init(buffer, 64000, 0)
-
-        let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(outputBuffer.frameLength))
-        g722_encode(buffer, encodedData, outputInt16ChannelData[0], Int32(outputBuffer.frameLength))
-
-        // TODO: Write the encoded data to a destination (e.g., a file or network)
-        // Replace 'destinationURL' with the actual destination URL where you want to write the data.
-        write(stuff: encodedData, to: self.l2capChannel, withMaxLength: 160)
+        print("inputBuffer.frameLegnth \(Int(inputBuffer.frameLength))")
         
-        // Don't forget to deallocate memory when you're done
+        let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(inputBuffer.frameLength))
+        g722_encode(buffer, encodedData, inputInt16ChannelData[0], Int32(inputBuffer.frameLength))
+        let data = Data(bytes: encodedData, count: Int(inputBuffer.frameLength))
+        send(data: data)
+        
         buffer.deallocate()
         encodedData.deallocate()
         
-    }
-
-    // Test function write buffer from wav file to another wave file
-    func copyPCMBuffer(from inputPath: String, to outputPath: String) {
-        guard let inputBuffer = readPCMBuffer(url: URL(string: inputPath)!) else {
-            fatalError("failed to read \(inputPath)")
-        }
-        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: inputBuffer.format, frameCapacity: inputBuffer.frameLength) else {
-            fatalError("failed to create a buffer for writing")
-        }
-        guard let inputInt16ChannelData = inputBuffer.int16ChannelData else {
-            fatalError("failed to obtain underlying input buffer")
-        }
-        guard let outputInt16ChannelData = outputBuffer.int16ChannelData else {
-            fatalError("failed to obtain underlying output buffer")
-        }
-        for channel in 0 ..< Int(inputBuffer.format.channelCount) {
-            let p1: UnsafeMutablePointer<Int16> = inputInt16ChannelData[channel]
-            let p2: UnsafeMutablePointer<Int16> = outputInt16ChannelData[channel]
-
-            for i in 0 ..< Int(inputBuffer.frameLength) {
-                p2[i] = p1[i]
-            }
-        }
-
-        outputBuffer.frameLength = inputBuffer.frameLength
-
-        do {
-            try writePCMBuffer(url: URL(string: outputPath)!, buffer: outputBuffer)
-        } catch {
-            fatalError("failed to write \(outputPath)")
-        }
     }
 
     func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
@@ -182,13 +163,16 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Stream is open")
                 let codec = Codec.g722at16kHz
                 let audiotype = AudioType.Media
-                let volume = 30
+                let volume = 0
                 let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
                 if let startStream = startAudioStream {
                     print("Starting stream...")
                     if let characteristic = audioControlPointCharacteristic {
                         print("Writing value for audio control characteristic")
                         hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+                        if let audioStatus = audioStatusCharacteristic {
+                            hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+                        }
                     }
                 }
             case Stream.Event.endEncountered:
@@ -206,9 +190,16 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                     }
                 }
             case Stream.Event.hasSpaceAvailable:
-                print("Space is available")
-                // TODO: Write audio data to peripheral here after writing <<Start>> opcode to AudioControlPoint chracteristic
-                writeAudioStream(from: "batman_theme_x.wav")
+                print("Space is available, audio status \(audioStatusPointState)")
+                self.send()
+//                writeAudioStream(from: "batman_theme_x.wav")
+
+//            if audioStatusPointState == AudioStatusPoint.StatusOK {
+//                    print("Writing audio file to peripheral")
+//                    writeAudioStream(from: "batman_theme_x.wav")
+//                } else {
+//                    print("Didn't write anything, error audio status: \(String(describing: audioStatusPointState))")
+//                }
             case Stream.Event.errorOccurred:
                 print("Stream error")
                 let stopAudioStream = AudioControlPointStop()?.asData()
@@ -221,6 +212,40 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Unknown stream event")
             }
     }
+    
+    private func send(data: Data) -> Void {
+        queueQueue.sync  {
+            self.outputData.append(data)
+        }
+        self.send()
+    }
+    
+    private func send() {
+        
+        guard let ostream = self.l2capChannel?.outputStream, !self.outputData.isEmpty, ostream.hasSpaceAvailable  else{
+            return
+        }
+        
+        let bytesWritten = self.outputData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> Int in
+            if let baseAddress = ptr.baseAddress {
+                return ostream.write(baseAddress.assumingMemoryBound(to: UInt8.self), maxLength: ptr.count)
+            } else {
+                return 0
+            }
+        }
+
+//        let bytesWritten =  ostream.write(self.outputData, maxLength: 160)
+        
+        print("bytesWritten = \(bytesWritten)")
+//        self.sentDataCallback?(self,bytesWritten)
+        queueQueue.sync {
+            if bytesWritten < outputData.count {
+                outputData = outputData.advanced(by: bytesWritten)
+            } else {
+                outputData.removeAll()
+            }
+        }
+    }
 
     func write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int) {
         let result = channel?.outputStream.write(stuff, maxLength: maxLength)
@@ -230,7 +255,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
         for service in services {
-            print(service)
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
@@ -247,14 +271,22 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("set volume characteristic")
                 volumeCharacteristic = characteristic
             }
-            if characteristic.properties.contains(.read) {
-                print("\(characteristic.uuid): properties contains .read")
+            if characteristic.uuid.data == lePsmOutPointCharacteristicCBUUID.data {
+                print("read value from psm characteristic")
                 peripheral.readValue(for: characteristic)
             }
-            if characteristic.properties.contains(.notify) {
-                print("\(characteristic.uuid): properties contains .notify")
-                peripheral.setNotifyValue(true, for: characteristic)
+            if characteristic.uuid.data == readOnlyPropertiesCharacteristicCBUUID.data {
+                print("read value from read only properties")
+                peripheral.readValue(for: characteristic)
             }
+            if characteristic.uuid.data == audioStatusCharacteristicCBUUID.data {
+                print("set audio status characteristic")
+                audioStatusCharacteristic = characteristic
+            }
+//            if characteristic.properties.contains(.notify) {
+//                print("\(characteristic.uuid): properties contains .notify")
+//                peripheral.setNotifyValue(true, for: characteristic)
+//            }
         }
     }
     
@@ -264,7 +296,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 readOnlyPropertiesState = readOnlyProperties(from: characteristic)
             case audioStatusCharacteristicCBUUID:
                 audioStatusPointState = audioStatusPoint(from: characteristic)
-                print("audio status update: \(audioStatusPointState)")
+                print("audio status update: \(String(describing: audioStatusPointState))")
+                if audioStatusPointState == AudioStatusPoint.StatusOK {
+                    print("writeAudioStream()")
+                    writeAudioStream(from: "batman_theme_x.wav")
+                }
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {
                     print(psmValue)
@@ -275,10 +311,10 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Unhandled Characteristic UUID: \(characteristic.uuid)")
         }
     }
-
+    
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-               print("Error setting a value for characteristic - \(error.localizedDescription)")
+               print("Error setting a value for characteristic, \(characteristic), \(error.localizedDescription)")
                return
         }
         print("Peripheral successfully set value for characteristic: \(characteristic)")
@@ -298,15 +334,22 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         }
         print("Opened channel \(channel)")
         self.l2capChannel = channel
-        self.outputStream = channel.outputStream
-        self.outputStream!.delegate = self
-        self.outputStream!.schedule(in: .main, forMode: .default)
-        self.outputStream!.open()
-
-        self.inputStream = channel.inputStream
-        self.inputStream!.delegate = self
-        self.inputStream!.schedule(in: .main, forMode: .default)
-        self.inputStream!.open()
+        self.l2capChannel?.inputStream.delegate = self
+        self.l2capChannel?.outputStream.delegate = self
+        self.l2capChannel?.inputStream.schedule(in: RunLoop.main, forMode: .default)
+        self.l2capChannel?.outputStream.schedule(in: RunLoop.main, forMode: .default)
+        self.l2capChannel?.inputStream.open()
+        self.l2capChannel?.outputStream.open()
+//        self.l2capChannel = channel
+//        self.outputStream = channel.outputStream
+//        self.outputStream!.delegate = self
+//        self.outputStream!.schedule(in: .main, forMode: .default)
+//        self.outputStream!.open()
+//
+//        self.inputStream = channel.inputStream
+//        self.inputStream!.delegate = self
+//        self.inputStream!.schedule(in: .main, forMode: .default)
+//        self.inputStream!.open()
     }
     
     public func setVolume(volumeLevel: UInt8) {
