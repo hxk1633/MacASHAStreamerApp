@@ -131,28 +131,120 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         }
     }
     
+    private func pcmBufferForFile(url: URL, sampleRate: Float) -> AVAudioPCMBuffer? {
+        guard let newFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: Double(sampleRate), channels: 1, interleaved: false) else {
+            preconditionFailure()
+        }
+        guard let audioFile = try? AVAudioFile(forReading: url) else {
+            preconditionFailure()
+        }
+        guard let tempBuffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat,
+                                                frameCapacity: AVAudioFrameCount(audioFile.length)) else {
+            preconditionFailure()
+        }
+        print("OG sample rate: \(tempBuffer.format.sampleRate)")
+
+        let conversionRatio = sampleRate / Float(tempBuffer.format.sampleRate)
+        let newLength = Float(audioFile.length) * conversionRatio
+        guard let newBuffer = AVAudioPCMBuffer(pcmFormat: newFormat,
+                                               frameCapacity: AVAudioFrameCount(newLength)) else {
+            preconditionFailure()
+        }
+
+        do { try audioFile.read(into: tempBuffer) } catch {
+            preconditionFailure()
+        }
+        guard let converter = AVAudioConverter(from: audioFile.processingFormat, to: newFormat) else {
+            preconditionFailure()
+        }
+        var error: NSError?
+        converter.convert(to: newBuffer, error: &error, withInputFrom: { (packetCount, statusPtr) -> AVAudioBuffer? in
+            statusPtr.pointee = .haveData
+            return tempBuffer
+        })
+        if error != nil {
+            print("*** Conversion error: \(error!)")
+        }
+        return newBuffer
+    }
+    
     func writeAudioStream(from inputPath: String) {
         let path = Bundle.main.path(forResource: inputPath, ofType: nil)!
         print("Audio file path: \(path)")
-        guard let inputBuffer = readAndDownsamplePCMBuffer(url: URL(string: path)!, targetSampleRate: 16000.0) else {
+        guard let inputBuffer = pcmBufferForFile(url: URL(string: path)!, sampleRate: 16000.0) else {
             fatalError("failed to read \(inputPath)")
         }
+        
+        print("downsampled inputBuffer: \(inputBuffer)")
+        print("downsampled inputBuffer frameLength: \(inputBuffer.frameLength)")
+        print("downsampled inputBuffer frameCapacity: \(inputBuffer.frameCapacity)")
+        print("downsampled inputBuffer format: \(inputBuffer.format)")
+        print("downsampled inputBuffer sample rate: \(inputBuffer.format.sampleRate)")
+        print("downsampled inputBuffer channel data: \(String(describing: inputBuffer.int16ChannelData))")
+        print("downsampled inputBuffer channel data pointee: \(String(describing: inputBuffer.int16ChannelData?.pointee))")
 
-        guard let inputInt16ChannelData = inputBuffer.int16ChannelData else {
-            fatalError("failed to obtain underlying input buffer")
+        // Assuming you have an AVAudioPCMBuffer named audioBuffer
+        let sampleRate = inputBuffer.format.sampleRate
+        let chunkSizeInFrames = Int(0.02 * sampleRate) // 20ms in frames
+
+        // Create an array to store the G.722 encoded chunks with sequence counters
+        var encodedChunks: [Data] = []
+        var startIndex = 0
+        var seqCounter: UInt64 = 0
+
+        // Initialize G.722 encoder
+        var encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160)
+        let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
+        g722_encode_init(encoderBuffer, 64000, 0)
+
+        while startIndex < inputBuffer.frameLength {
+            let endIndex = min(startIndex + chunkSizeInFrames, Int(inputBuffer.frameLength))
+            let chunkLength = endIndex - startIndex
+            let chunkData = Data(bytes: inputBuffer.int16ChannelData![0], count: chunkLength * MemoryLayout<Float>.size)
+            // Create a new Data object for the audio chunk
+            // Encode the audio chunk with G.722
+            encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
+            chunkData.withUnsafeBytes { int16Buffer in
+                 if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
+                     g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(chunkLength))
+                 }
+             }
+            
+            // Convert the encodedData pointer to a Data object
+            let encodedChunk = Data(bytes: encodedData, count: 160) // Adjust count as needed
+            
+            // Append the sequence counter to the encoded chunk
+            var chunkWithSeqCounter = Data()
+            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+            encodedChunks.append(chunkWithSeqCounter)
+            chunkWithSeqCounter.append(contentsOf: encodedChunk)
+//            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+            // Append the G.722 encoded chunk with the sequence counter to the array
+            send(data: chunkWithSeqCounter)
+            
+            // Increment the sequence counter
+            seqCounter &+= 1
+
+            startIndex = endIndex
         }
-
-        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: Int(inputBuffer.frameLength))
-        g722_encode_init(buffer, 64000, 0)
-        print("inputBuffer.frameLegnth \(Int(inputBuffer.frameLength))")
-        
-        let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(inputBuffer.frameLength))
-        g722_encode(buffer, encodedData, inputInt16ChannelData[0], Int32(inputBuffer.frameLength))
-        let data = Data(bytes: encodedData, count: Int(inputBuffer.frameLength))
-        send(data: data)
-        
-        buffer.deallocate()
+        encoderBuffer.deallocate()
         encodedData.deallocate()
+
+        // Now, encodedChunks contains G.722 encoded Data objects with sequence counters for each 20ms chunk
+        print("audioChunks: \(encodedChunks)")
+        print("audioChunks size: \(encodedChunks.count)")
+        
+//        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: Int(inputBuffer.frameLength))
+//        print("buffer: \(buffer)")
+//        g722_encode_init(buffer, 64000, 0)
+//        print("buffer: \(buffer)")
+//
+//        let encodedData = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: Int(inputBuffer.frameLength))
+//        g722_encode(buffer, encodedData, inputBuffer.int16ChannelData?.pointee, Int32(inputBuffer.frameLength))
+//        let data = Data(bytes: encodedData, count: 160)
+        
+//        buffer.deallocate()
+//        encodedData.deallocate()
         
     }
 
@@ -163,7 +255,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("Stream is open")
                 let codec = Codec.g722at16kHz
                 let audiotype = AudioType.Media
-                let volume = 0
+                let volume = 20
                 let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
                 if let startStream = startAudioStream {
                     print("Starting stream...")
@@ -171,6 +263,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                         print("Writing value for audio control characteristic")
                         hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
                         if let audioStatus = audioStatusCharacteristic {
+                            sleep(2)
                             hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
                         }
                     }
@@ -190,7 +283,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                     }
                 }
             case Stream.Event.hasSpaceAvailable:
-                print("Space is available, audio status \(audioStatusPointState)")
+                print("Space is available, audio status \(String(describing: audioStatusPointState))")
                 self.send()
 //                writeAudioStream(from: "batman_theme_x.wav")
 
@@ -226,15 +319,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             return
         }
         
-        let bytesWritten = self.outputData.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> Int in
-            if let baseAddress = ptr.baseAddress {
-                return ostream.write(baseAddress.assumingMemoryBound(to: UInt8.self), maxLength: ptr.count)
-            } else {
-                return 0
-            }
-        }
-
-//        let bytesWritten =  ostream.write(self.outputData, maxLength: 160)
+        let bytesWritten =  ostream.write(self.outputData)
         
         print("bytesWritten = \(bytesWritten)")
 //        self.sentDataCallback?(self,bytesWritten)
@@ -247,10 +332,10 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         }
     }
 
-    func write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int) {
-        let result = channel?.outputStream.write(stuff, maxLength: maxLength)
-        print("Write result: \(String(describing: result))")
-    }
+//    func write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int) {
+//        let result = channel?.outputStream.write(stuff, maxLength: maxLength)
+//        print("Write result: \(String(describing: result))")
+//    }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
@@ -299,7 +384,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
                     print("writeAudioStream()")
-                    writeAudioStream(from: "batman_theme_x.wav")
+                    writeAudioStream(from: "ff-16b-2c-44100hz.mp4")
                 }
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {
@@ -390,6 +475,29 @@ extension BluetoothViewModel: CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
             peripheral.publishL2CAPChannel(withEncryption: true)
+        }
+    }
+}
+
+extension OutputStream {
+    func write(_ data: Data) -> Int {
+        return data.withUnsafeBytes({ (rawBufferPointer: UnsafeRawBufferPointer) -> Int in
+            let bufferPointer = rawBufferPointer.bindMemory(to: UInt8.self)
+            return self.write(bufferPointer.baseAddress!, maxLength: data.count)
+        })
+    }
+}
+
+extension Data {
+    init<T>(value: T) {
+        self = withUnsafePointer(to: value) { (ptr: UnsafePointer<T>) -> Data in
+            return Data(buffer: UnsafeBufferPointer(start: ptr, count: 1))
+        }
+    }
+
+    mutating func append<T>(value: T) {
+        withUnsafePointer(to: value) { (ptr: UnsafePointer<T>) in
+            append(UnsafeBufferPointer(start: ptr, count: 1))
         }
     }
 }

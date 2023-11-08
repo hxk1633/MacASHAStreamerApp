@@ -52,7 +52,7 @@ struct AudioControlPointStart {
     }
     
     func asData() -> Data {
-        return Data([opcode, codec.rawValue, audiotype.rawValue, UInt8(volume)])
+        return Data([opcode, codec.rawValue, audiotype.rawValue, UInt8(volume), otherstate.rawValue])
     }
 }
 
