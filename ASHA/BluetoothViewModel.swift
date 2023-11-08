@@ -132,7 +132,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     }
     
     private func pcmBufferForFile(url: URL, sampleRate: Float) -> AVAudioPCMBuffer? {
-        guard let newFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: Double(sampleRate), channels: 1, interleaved: false) else {
+        guard let newFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: Double(sampleRate), channels: 1, interleaved: true) else {
             preconditionFailure()
         }
         guard let audioFile = try? AVAudioFile(forReading: url) else {
@@ -169,8 +169,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
     }
     
     func writeAudioStream(from inputPath: String) {
+        print("inputPath: \(inputPath)")
+        
         let path = Bundle.main.path(forResource: inputPath, ofType: nil)!
         print("Audio file path: \(path)")
+//        print("Audio file path: \(path)")
         guard let inputBuffer = pcmBufferForFile(url: URL(string: path)!, sampleRate: 16000.0) else {
             fatalError("failed to read \(inputPath)")
         }
@@ -186,6 +189,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         // Assuming you have an AVAudioPCMBuffer named audioBuffer
         let sampleRate = inputBuffer.format.sampleRate
         let chunkSizeInFrames = Int(0.02 * sampleRate) // 20ms in frames
+        print("chunkSizeInFrame: \(chunkSizeInFrames)")
 
         // Create an array to store the G.722 encoded chunks with sequence counters
         var encodedChunks: [Data] = []
@@ -216,23 +220,24 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             // Append the sequence counter to the encoded chunk
             var chunkWithSeqCounter = Data()
             withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
-            encodedChunks.append(chunkWithSeqCounter)
             chunkWithSeqCounter.append(contentsOf: encodedChunk)
 //            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
             // Append the G.722 encoded chunk with the sequence counter to the array
             send(data: chunkWithSeqCounter)
+            encodedChunks.append(chunkWithSeqCounter)
             
             // Increment the sequence counter
             seqCounter &+= 1
 
             startIndex = endIndex
         }
-        encoderBuffer.deallocate()
-        encodedData.deallocate()
 
         // Now, encodedChunks contains G.722 encoded Data objects with sequence counters for each 20ms chunk
         print("audioChunks: \(encodedChunks)")
         print("audioChunks size: \(encodedChunks.count)")
+        
+        encoderBuffer.deallocate()
+        encodedData.deallocate()
         
 //        let buffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: Int(inputBuffer.frameLength))
 //        print("buffer: \(buffer)")
@@ -384,7 +389,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
                     print("writeAudioStream()")
-                    writeAudioStream(from: "ff-16b-2c-44100hz.mp4")
+                    writeAudioStream(from: "pcm1644m.wav")
                 }
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {

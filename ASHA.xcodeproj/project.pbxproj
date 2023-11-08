@@ -10,6 +10,7 @@
 		79B2F4F22AF7F85C00CAE357 /* g722_decode.c in Sources */ = {isa = PBXBuildFile; fileRef = 79B2F4F12AF7F85C00CAE357 /* g722_decode.c */; };
 		79B2F4F42AF7F86300CAE357 /* g722_encode.c in Sources */ = {isa = PBXBuildFile; fileRef = 79B2F4F32AF7F86300CAE357 /* g722_encode.c */; };
 		79B2F4F92AF9E35000CAE357 /* batman_theme_x.wav in Resources */ = {isa = PBXBuildFile; fileRef = 79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */; };
+		C594E2D72AFB4E2E000DFB45 /* pcm1644m.wav in Resources */ = {isa = PBXBuildFile; fileRef = C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */; };
 		C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */; };
 		C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */; };
 		C5B0D11E2AF4634B00F3BB48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C5B0D11D2AF4634B00F3BB48 /* Assets.xcassets */; };
@@ -43,6 +44,7 @@
 		79B2F4F52AF7F87300CAE357 /* g722.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = g722.h; sourceTree = "<group>"; };
 		79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = batman_theme_x.wav; path = ASHA/batman_theme_x.wav; sourceTree = SOURCE_ROOT; };
 		C594E2D52AFB4607000DFB45 /* ff-16b-2c-44100hz.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; name = "ff-16b-2c-44100hz.mp4"; path = "ASHA/ff-16b-2c-44100hz.mp4"; sourceTree = SOURCE_ROOT; };
+		C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = pcm1644m.wav; path = ASHA/pcm1644m.wav; sourceTree = SOURCE_ROOT; };
 		C5B0D1162AF4634A00F3BB48 /* ASHA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ASHA.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ASHAApp.swift; sourceTree = "<group>"; };
 		C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 			isa = PBXGroup;
 			children = (
 				C594E2D52AFB4607000DFB45 /* ff-16b-2c-44100hz.mp4 */,
+				C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */,
 				79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */,
 				79B2F4EA2AF7F80D00CAE357 /* g722 */,
 				C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */,
@@ -243,6 +246,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C594E2D72AFB4E2E000DFB45 /* pcm1644m.wav in Resources */,
 				C5B0D1212AF4634B00F3BB48 /* Preview Assets.xcassets in Resources */,
 				79B2F4F92AF9E35000CAE357 /* batman_theme_x.wav in Resources */,
 				C5B0D11E2AF4634B00F3BB48 /* Assets.xcassets in Resources */,
