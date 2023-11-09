@@ -49,6 +49,7 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         }
     }
     
+    
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         peripheralNames.append(peripheral.name ?? "Unnamed")
         hearingDevicePeripheral = peripheral
@@ -71,6 +72,69 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
 
 extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
 
+
+    func startRecording() throws {
+
+        let audioEngine = AVAudioEngine()
+
+        let inputNode = audioEngine.inputNode
+        let srate:UInt32 = UInt32(inputNode.inputFormat(forBus: 0).sampleRate)
+        print("sample rate = \(srate)")
+        if srate == 0 {
+            return;
+        }
+        // Create an AVAudioConverter to perform the downsampling
+        let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false);
+        
+        guard let converter = AVAudioConverter(from: inputNode.inputFormat(forBus: 0), to:targetFormat!) else {
+            return;
+        }
+        let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
+        g722_encode_init(encoderBuffer, 64000, 0)
+        var seqCounter: UInt64 = 0
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+            inputNode.installTap(onBus: 0,
+          bufferSize: 320*srate/16000,
+            format: recordingFormat) {
+                (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
+                let n = buffer.frameLength
+                let c = buffer.stride
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 320) else {
+                    return;
+                }
+                
+                do {
+                    try converter.convert(to: downsampledBuffer, from: buffer)
+                    let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
+                    let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: 320 * MemoryLayout<Float>.size)
+                    chunkData.withUnsafeBytes { int16Buffer in
+                        if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
+                                g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(320))
+                            }
+                        }
+                    // Convert the encodedData pointer to a Data object
+                    let encodedChunk = Data(bytes: encodedData, count: 160) // Adjust count as needed
+                    
+                    // Append the sequence counter to the encoded chunk
+                    var chunkWithSeqCounter = Data()
+                    withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+                    chunkWithSeqCounter.append(contentsOf: encodedChunk)
+        //            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+                    // Append the G.722 encoded chunk with the sequence counter to the array
+                    self.send(data: chunkWithSeqCounter);
+                    
+                    // Increment the sequence counter
+                    seqCounter &+= 1
+
+                } catch {
+                    print("Error during audio conversion: \(error)")
+                }
+                
+            }
+
+        try audioEngine.start()
+    }
+
     func readPCMBuffer(url: URL) -> AVAudioPCMBuffer? {
         guard let input = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
             return nil
@@ -86,6 +150,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
 
         return buffer
     }
+    
     
     func readAndDownsamplePCMBuffer(url: URL, targetSampleRate: Double) -> AVAudioPCMBuffer? {
         print("Reading audio file...")
