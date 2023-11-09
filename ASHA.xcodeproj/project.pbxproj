@@ -10,6 +10,7 @@
 		79B2F4F22AF7F85C00CAE357 /* g722_decode.c in Sources */ = {isa = PBXBuildFile; fileRef = 79B2F4F12AF7F85C00CAE357 /* g722_decode.c */; };
 		79B2F4F42AF7F86300CAE357 /* g722_encode.c in Sources */ = {isa = PBXBuildFile; fileRef = 79B2F4F32AF7F86300CAE357 /* g722_encode.c */; };
 		79B2F4F92AF9E35000CAE357 /* batman_theme_x.wav in Resources */ = {isa = PBXBuildFile; fileRef = 79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */; };
+		79E643EA2AFC567300CB9DA2 /* HCIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E643E82AFC567300CB9DA2 /* HCIDelegate.swift */; };
 		C594E2D72AFB4E2E000DFB45 /* pcm1644m.wav in Resources */ = {isa = PBXBuildFile; fileRef = C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */; };
 		C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */; };
 		C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */; };
@@ -43,6 +44,8 @@
 		79B2F4F32AF7F86300CAE357 /* g722_encode.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = g722_encode.c; sourceTree = "<group>"; };
 		79B2F4F52AF7F87300CAE357 /* g722.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = g722.h; sourceTree = "<group>"; };
 		79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = batman_theme_x.wav; path = ASHA/batman_theme_x.wav; sourceTree = SOURCE_ROOT; };
+		79E643E82AFC567300CB9DA2 /* HCIDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HCIDelegate.swift; sourceTree = "<group>"; };
+		79E643E92AFC567300CB9DA2 /* IOBluetoothHostController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOBluetoothHostController.h; sourceTree = "<group>"; };
 		C594E2D52AFB4607000DFB45 /* ff-16b-2c-44100hz.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; name = "ff-16b-2c-44100hz.mp4"; path = "ASHA/ff-16b-2c-44100hz.mp4"; sourceTree = SOURCE_ROOT; };
 		C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = pcm1644m.wav; path = ASHA/pcm1644m.wav; sourceTree = SOURCE_ROOT; };
 		C5B0D1162AF4634A00F3BB48 /* ASHA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ASHA.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -89,9 +92,17 @@
 				79B2F4F32AF7F86300CAE357 /* g722_encode.c */,
 				79B2F4F12AF7F85C00CAE357 /* g722_decode.c */,
 				79B2F4F52AF7F87300CAE357 /* g722.h */,
-				79B2F4EB2AF7F81F00CAE357 /* ASHA-Bridging-Header.h */,
 			);
 			path = g722;
+			sourceTree = "<group>";
+		};
+		79E643E72AFC567300CB9DA2 /* bluetooth */ = {
+			isa = PBXGroup;
+			children = (
+				79E643E82AFC567300CB9DA2 /* HCIDelegate.swift */,
+				79E643E92AFC567300CB9DA2 /* IOBluetoothHostController.h */,
+			);
+			path = bluetooth;
 			sourceTree = "<group>";
 		};
 		C5B0D10D2AF4634A00F3BB48 = {
@@ -116,7 +127,9 @@
 			isa = PBXGroup;
 			children = (
 				C594E2D52AFB4607000DFB45 /* ff-16b-2c-44100hz.mp4 */,
+				79B2F4EB2AF7F81F00CAE357 /* ASHA-Bridging-Header.h */,
 				C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */,
+				79E643E72AFC567300CB9DA2 /* bluetooth */,
 				79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */,
 				79B2F4EA2AF7F80D00CAE357 /* g722 */,
 				C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */,
@@ -277,6 +290,7 @@
 				C5B0D14A2AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift in Sources */,
 				79B2F4F42AF7F86300CAE357 /* g722_encode.c in Sources */,
 				C5B0D14C2AF67AD300F3BB48 /* BluetoothViewModel.swift in Sources */,
+				79E643EA2AFC567300CB9DA2 /* HCIDelegate.swift in Sources */,
 				C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */,
 				C5B0D14E2AF689C400F3BB48 /* AudioControlPointModel.swift in Sources */,
 				C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */,
@@ -444,7 +458,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = R87Q688498;
+				DEVELOPMENT_TEAM = 2FTR9775R5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -460,7 +474,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonkaiser.ASHA;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "ASHA/g722/ASHA-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "ASHA/ASHA-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
@@ -478,7 +492,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = R87Q688498;
+				DEVELOPMENT_TEAM = 2FTR9775R5;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -494,7 +508,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.harrisonkaiser.ASHA;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "ASHA/g722/ASHA-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "ASHA/ASHA-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
