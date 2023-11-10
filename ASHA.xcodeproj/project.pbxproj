@@ -11,6 +11,7 @@
 		79B2F4F42AF7F86300CAE357 /* g722_encode.c in Sources */ = {isa = PBXBuildFile; fileRef = 79B2F4F32AF7F86300CAE357 /* g722_encode.c */; };
 		79B2F4F92AF9E35000CAE357 /* batman_theme_x.wav in Resources */ = {isa = PBXBuildFile; fileRef = 79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */; };
 		79E643EA2AFC567300CB9DA2 /* HCIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E643E82AFC567300CB9DA2 /* HCIDelegate.swift */; };
+		C53E23882AFC62E70032B265 /* HCIModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53E23872AFC62E70032B265 /* HCIModel.swift */; };
 		C594E2D72AFB4E2E000DFB45 /* pcm1644m.wav in Resources */ = {isa = PBXBuildFile; fileRef = C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */; };
 		C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D1192AF4634A00F3BB48 /* ASHAApp.swift */; };
 		C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B0D11B2AF4634A00F3BB48 /* ContentView.swift */; };
@@ -46,6 +47,7 @@
 		79B2F4F82AF9E35000CAE357 /* batman_theme_x.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = batman_theme_x.wav; path = ASHA/batman_theme_x.wav; sourceTree = SOURCE_ROOT; };
 		79E643E82AFC567300CB9DA2 /* HCIDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HCIDelegate.swift; sourceTree = "<group>"; };
 		79E643E92AFC567300CB9DA2 /* IOBluetoothHostController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOBluetoothHostController.h; sourceTree = "<group>"; };
+		C53E23872AFC62E70032B265 /* HCIModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HCIModel.swift; sourceTree = "<group>"; };
 		C594E2D52AFB4607000DFB45 /* ff-16b-2c-44100hz.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; name = "ff-16b-2c-44100hz.mp4"; path = "ASHA/ff-16b-2c-44100hz.mp4"; sourceTree = SOURCE_ROOT; };
 		C594E2D62AFB4E2E000DFB45 /* pcm1644m.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = pcm1644m.wav; path = ASHA/pcm1644m.wav; sourceTree = SOURCE_ROOT; };
 		C5B0D1162AF4634A00F3BB48 /* ASHA.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ASHA.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -137,6 +139,7 @@
 				C5B0D14B2AF67AD300F3BB48 /* BluetoothViewModel.swift */,
 				C5B0D1492AF5AE9C00F3BB48 /* ReadOnlyPropertiesModel.swift */,
 				C5B0D14D2AF689C400F3BB48 /* AudioControlPointModel.swift */,
+				C53E23872AFC62E70032B265 /* HCIModel.swift */,
 				C5B0D11D2AF4634B00F3BB48 /* Assets.xcassets */,
 				C5B0D1222AF4634B00F3BB48 /* ASHA.entitlements */,
 				C5B0D11F2AF4634B00F3BB48 /* Preview Content */,
@@ -293,6 +296,7 @@
 				79E643EA2AFC567300CB9DA2 /* HCIDelegate.swift in Sources */,
 				C5B0D11C2AF4634A00F3BB48 /* ContentView.swift in Sources */,
 				C5B0D14E2AF689C400F3BB48 /* AudioControlPointModel.swift in Sources */,
+				C53E23882AFC62E70032B265 /* HCIModel.swift in Sources */,
 				C5B0D11A2AF4634A00F3BB48 /* ASHAApp.swift in Sources */,
 				79B2F4F22AF7F85C00CAE357 /* g722_decode.c in Sources */,
 			);
@@ -458,7 +462,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = 2FTR9775R5;
+				DEVELOPMENT_TEAM = R87Q688498;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -492,7 +496,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"ASHA/Preview Content\"";
-				DEVELOPMENT_TEAM = 2FTR9775R5;
+				DEVELOPMENT_TEAM = R87Q688498;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

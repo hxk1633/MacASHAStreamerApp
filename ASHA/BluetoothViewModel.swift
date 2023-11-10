@@ -7,7 +7,6 @@
 import Foundation
 import CoreBluetooth
 import AVFoundation
-import IOBluetooth
 
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
@@ -17,6 +16,7 @@ let volumeCharacteristicCBUUID             = CBUUID(string: "00e4ca9e-ab14-41e4-
 let lePsmOutPointCharacteristicCBUUID      = CBUUID(string: "2d410339-82b6-42aa-b34e-e2e01df8cc1a")
 
 class BluetoothViewModel: NSObject, ObservableObject {
+    private var hciController: IOBluetoothHostController?
     private var centralManager: CBCentralManager?
     private var peripheralManager: CBPeripheralManager?
     private var l2capChannel: CBL2CAPChannel?
@@ -39,6 +39,9 @@ class BluetoothViewModel: NSObject, ObservableObject {
         super.init()
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
         self.peripheralManager = CBPeripheralManager(delegate: self, queue: .main)
+        self.hciController = IOBluetoothHostController.default()
+//        self.delegate = [[HCIDelegate alloc] init];
+//        self.hciController.delegate = self.delegate;
     }
 }
 
@@ -66,11 +69,37 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
             hearingDevice.discoverServices([ashaServiceCBUUID])
         }
     }
-    
+     
 }
 
-extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
-
+extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothHostControllerDelegate {
+    
+    func bluetoothHCIEventNotificationMessage(_ controller: IOBluetoothHostController, in message: IOBluetoothHCIEventNotificationMessageRef) {
+        print("HCI event message: \(message)")
+        
+//        let event_code = message.move()
+//        print("event code: \(event_code)")
+//        print("event code: \(event_code.eventParameterBytes)")
+//        print("event code: \(event_code.eventParameterBytes.load(as: Int.self))")
+//        if event_code.eventParameterBytes.load(as: Int.self) == 0x3E {
+//            let codec = Codec.g722at16kHz
+//            let audiotype = AudioType.Media
+//            let volume = 20
+//            let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
+//            if let startStream = startAudioStream {
+//                print("Starting stream...")
+//                if let characteristic = audioControlPointCharacteristic {
+//                    print("Writing value for audio control characteristic")
+//                    hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+//                    if let audioStatus = audioStatusCharacteristic {
+//                        sleep(2)
+//                        hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+//                    }
+//                }
+//            }
+//        }
+    }
+    
     func readPCMBuffer(url: URL) -> AVAudioPCMBuffer? {
         guard let input = try? AVAudioFile(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false) else {
             return nil
@@ -219,8 +248,9 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             
             // Append the sequence counter to the encoded chunk
             var chunkWithSeqCounter = Data()
-            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+//            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
             chunkWithSeqCounter.append(contentsOf: encodedChunk)
+            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
 //            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
             // Append the G.722 encoded chunk with the sequence counter to the array
             send(data: chunkWithSeqCounter)
@@ -290,14 +320,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available, audio status \(String(describing: audioStatusPointState))")
                 self.send()
-//                writeAudioStream(from: "batman_theme_x.wav")
-
-//            if audioStatusPointState == AudioStatusPoint.StatusOK {
-//                    print("Writing audio file to peripheral")
-//                    writeAudioStream(from: "batman_theme_x.wav")
-//                } else {
-//                    print("Didn't write anything, error audio status: \(String(describing: audioStatusPointState))")
-//                }
             case Stream.Event.errorOccurred:
                 print("Stream error")
                 let stopAudioStream = AudioControlPointStop()?.asData()
@@ -380,6 +402,46 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         }
     }
     
+    private func leUpdateConnectionCommand() {
+        var request: BluetoothHCIRequestID = 1
+        var nullPointer: UnsafeMutableRawPointer? = nil
+        var error = BluetoothHCIRequestCreate(&request, 1000, &nullPointer, 0);
+        print("error \(error)")
+        print("Create request: \(request)")
+        
+        if ((error) != 0) {
+            BluetoothHCIRequestDelete(request);
+            print("Couldnt create error: \(error)");
+        }
+        let commandSize = 12 + 3
+        var command = [UInt8](repeating: 0, count: commandSize)
+        command[0] = 0x0013 // OCF
+        command[1] = 0x01   // OGF
+        command[2] = 12     // parameter total length
+        command[3] = 0x005E // connection handle
+        command[4] = 0x0010 // Conn_Interval_Min
+        command[5] = 0x0010 // Conn_Interval_Max
+        command[6] = 0x000A // Conn_Latency
+        command[7] = 0x0064 // Supervision_Timeout
+        command[8] = 0x0006 // Minimum_CE_Length
+        command[9] = 0x0006 // Maximum_CE_Length
+
+        error = BluetoothHCISendRawCommand(request, &command, commandSize)
+        if error == 0 {
+            print("Issuing HCI command")
+            error = BluetoothHCISendRawCommand(request, &command, commandSize)
+
+            if error != 0 {
+                BluetoothHCIRequestDelete(request)
+                print("Send HCI command Error: \(error)")
+            }
+        }
+        
+        sleep(0x1);
+        
+        BluetoothHCIRequestDelete(request);
+    }
+    
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         switch characteristic.uuid {
             case readOnlyPropertiesCharacteristicCBUUID:
@@ -389,6 +451,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
                     print("writeAudioStream()")
+                    sleep(5)
                     writeAudioStream(from: "pcm1644m.wav")
                 }
             case lePsmOutPointCharacteristicCBUUID:
@@ -396,6 +459,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
                     print(psmValue)
                     psm = psmValue
                     peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
+                    leUpdateConnectionCommand()
                 }
             default:
                 print("Unhandled Characteristic UUID: \(characteristic.uuid)")
@@ -422,6 +486,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate {
         guard let channel = channel else {
            return
         }
+
         print("Opened channel \(channel)")
         self.l2capChannel = channel
         self.l2capChannel?.inputStream.delegate = self
