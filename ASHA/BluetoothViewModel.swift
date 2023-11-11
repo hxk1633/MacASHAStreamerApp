@@ -8,6 +8,7 @@ import Foundation
 import CoreBluetooth
 import AVFoundation
 
+
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
 let audioControlPointCharacteristicCBUUID  = CBUUID(string: "f0d4de7e-4a88-476c-9d9f-1937b0996cc0")
@@ -470,6 +471,29 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
     private func leUpdateConnectionCommand() {
         var request: BluetoothHCIRequestID = 1
         var nullPointer: UnsafeMutableRawPointer? = nil
+        let hciController = IOBluetoothHostController.default()
+        var connectionHandle: UInt16 = 0;
+            print("Bluetooth devices:")
+            guard let devices = IOBluetoothDevice.pairedDevices() else {
+                print("No devices")
+                return
+            }
+            for item in devices {
+                if let device = item as? IOBluetoothDevice {
+                    print("Name: \(device.name)");
+                    print("Paired?: \(device.isPaired())")
+                    print("Connected?: \(device.isConnected())")
+
+                    // todo implemeent this if block
+                    // confirmthis is correct
+                    if(device.isConnected() && device.isPaired() && device.name == hearingDevicePeripheral?.name){
+                        connectionHandle = device.connectionHandle;
+                        hciController?.bluetoothHCILEConnectionUpdate(connectionHandle, connectionIntervalMin: 0x0008, connectionIntervalMax: 0x0008, connectionLatency:0x000A, supervisionTimeout:0x0064, minimumCELength: 0x0006, maximumCELength: 0x0006)
+                    }
+                }
+        }
+        // is this needed needed?
+        /*
         var error = BluetoothHCIRequestCreate(&request, 1000, &nullPointer, 0);
         print("error \(error)")
         print("Create request: \(request)")
@@ -479,11 +503,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             print("Couldnt create error: \(error)");
         }
         let commandSize = 12 + 3
-        var command = [UInt8](repeating: 0, count: commandSize)
+        var command = [UInt16](repeating: 0, count: commandSize)
         command[0] = 0x0013 // OCF
         command[1] = 0x01   // OGF
         command[2] = 12     // parameter total length
-        command[3] = 0x005E // connection handle
+        command[3] = connectionHandle // connection handle
         command[4] = 0x0010 // Conn_Interval_Min
         command[5] = 0x0010 // Conn_Interval_Max
         command[6] = 0x000A // Conn_Latency
@@ -491,8 +515,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         command[8] = 0x0006 // Minimum_CE_Length
         command[9] = 0x0006 // Maximum_CE_Length
 
-        error = BluetoothHCISendRawCommand(request, &command, commandSize)
-        if error == 0 {
             print("Issuing HCI command")
             error = BluetoothHCISendRawCommand(request, &command, commandSize)
 
@@ -500,11 +522,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 BluetoothHCIRequestDelete(request)
                 print("Send HCI command Error: \(error)")
             }
-        }
+
         
         sleep(0x1);
         
-        BluetoothHCIRequestDelete(request);
+        BluetoothHCIRequestDelete(request);*/
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
