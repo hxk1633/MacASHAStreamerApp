@@ -147,19 +147,22 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 let n = buffer.frameLength
                 let c = buffer.stride
 
-                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 320) else {
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: n) else {
                     return;
                 }
                 
                 do {
                     let status = converter.convert(to: downsampledBuffer, error: nil, withInputFrom: inputCallback)
-                    print (downsampledBuffer.frameLength)
+                    print( "Downsample AVAudioConverterOutputStatus hasDaata: \(status.rawValue == 0)")
+                    print( "Downsampled PCM: \(downsampledBuffer.frameLength)")
+                    
+
                     let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
                     let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: 320 * MemoryLayout<Float>.size)
                     chunkData.withUnsafeBytes { int16Buffer in
                         if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
                               let size =  g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(320))
-                            print(size)
+                            print( "g722 size: \(size)")
                             }
                         }
                     // Convert the encodedData pointer to a Data object
