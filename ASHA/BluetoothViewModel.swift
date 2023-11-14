@@ -9,6 +9,43 @@ import CoreBluetooth
 import AVFoundation
 
 
+// The MIN_CE_LEN parameter for Connection Parameters based on the current
+// Connection Interval
+let MIN_CE_LEN_10MS_CI: UInt16 = 0x0006
+let MIN_CE_LEN_20MS_CI: UInt16 = 0x000C
+let MAX_CE_LEN_20MS_CI: UInt16 = 0x000C
+let CE_LEN_20MS_CI_ISO_RUNNING: UInt16 = 0x0000
+let CONNECTION_INTERVAL_10MS_PARAM: UInt16 = 0x0008
+let CONNECTION_INTERVAL_20MS_PARAM: UInt16 = 0x0010
+let CODEC_G722_16KHZ: UInt8 = 0x01
+let CODEC_G722_24KHZ: UInt8 = 0x02
+
+// Audio control point opcodes
+let CONTROL_POINT_OP_START: UInt8 = 0x01
+let CONTROL_POINT_OP_STOP: UInt8 = 0x02
+let CONTROL_POINT_OP_STATE_CHANGE: UInt8 = 0x03
+let STATE_CHANGE_OTHER_SIDE_DISCONNECTED: UInt8 = 0x00
+let STATE_CHANGE_OTHER_SIDE_CONNECTED: UInt8 = 0x01
+let STATE_CHANGE_CONN_UPDATE: UInt8 = 0x02
+
+// Used to mark current_volume as not yet known, or possibly old
+let VOLUME_UNKNOWN: Int8 = 127
+let VOLUME_MIN: Int8 = -127
+
+// Audio type
+let AUDIOTYPE_UNKNOWN: UInt8 = 0x00
+
+// Status of the other side Hearing Aids device
+let OTHER_SIDE_NOT_STREAMING: UInt8 = 0x00
+let OTHER_SIDE_IS_STREAMING: UInt8 = 0x01
+
+// This ADD_RENDER_DELAY_INTERVALS is the number of connection intervals when
+// the audio data packet is sent by Audio Engine to when the Hearing Aids device
+// receives it from the air. We assume that there are 2 data buffers queued from
+// audio subsystem to the bluetooth chip. Then the estimated OTA delay is two
+// connection intervals.
+let ADD_RENDER_DELAY_INTERVALS: UInt16 = 4
+
 let ashaServiceCBUUID                      = CBUUID(string: "0xFDF0")
 let readOnlyPropertiesCharacteristicCBUUID = CBUUID(string: "6333651e-c481-4a3e-9169-7c902aad37bb")
 let audioControlPointCharacteristicCBUUID  = CBUUID(string: "f0d4de7e-4a88-476c-9d9f-1937b0996cc0")
@@ -354,18 +391,18 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         switch eventCode {
             case Stream.Event.openCompleted:
                 print("Stream is open")
-                let codec = Codec.g722at16kHz
-                let audiotype = AudioType.Media
-                let volume = 20
-                let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: Int8(volume), otherState: OtherState.OtherSideDisconnected)?.asData()
+                let codec = CODEC_G722_16KHZ
+                let audiotype = AUDIOTYPE_UNKNOWN
+                let volume = VOLUME_UNKNOWN
+                let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
                 if let startStream = startAudioStream {
                     print("Starting stream...")
                     if let characteristic = audioControlPointCharacteristic {
                         print("Writing value for audio control characteristic")
-                        hearingDevicePeripheral?.writeValue(startStream, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
                         if let audioStatus = audioStatusCharacteristic {
                             sleep(2)
-                            hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+                           // hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
                         }
                     }
                 }
@@ -373,7 +410,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 print("End Encountered")
             case Stream.Event.hasBytesAvailable:
                 print("Bytes are available")
-                if let iStream = aStream as? InputStream {
+              /*  if let iStream = aStream as? InputStream {
                     print("Input stream")
                     let bufLength = 1024
                     let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufLength)
@@ -382,18 +419,18 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     if let string = String(bytesNoCopy: buffer, length: bytesRead, encoding: .utf8, freeWhenDone: false) {
                         print("Received data: \(string)")
                     }
-                }
+                }*/
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available, audio status \(String(describing: audioStatusPointState))")
-                self.send()
+               // self.send()
             case Stream.Event.errorOccurred:
                 print("Stream error")
-                let stopAudioStream = AudioControlPointStop()?.asData()
+               /* let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {
                     if let characteristic = audioControlPointCharacteristic {
                         hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
                     }
-                }
+                }*/
             default:
                 print("Unknown stream event")
             }
@@ -545,8 +582,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 if let psmValue = psmIdentifier(from: characteristic) {
                     print(psmValue)
                     psm = psmValue
-                    peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
-                    leUpdateConnectionCommand()
+                  peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
+                  //  leUpdateConnectionCommand()
                 }
             default:
                 print("Unhandled Characteristic UUID: \(characteristic.uuid)")

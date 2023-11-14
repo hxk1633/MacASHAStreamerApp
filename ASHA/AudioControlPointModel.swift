@@ -13,38 +13,15 @@ enum AudioStatusPoint: String {
     case IllegalParameters = "Illegal Parameters"
 }
 
-enum AudioType: UInt8 {
-    case Unknown = 0
-    case Ringtone = 1
-    case Phonecall = 2
-    case Media = 3
-}
-
-enum OtherState: UInt8 {
-    case OtherSideDisconnected = 0
-    case OtherSideConnected = 1
-}
-
-enum Codec: UInt8 {
-    case otherCodecs = 0
-    case g722at16kHz = 1
-}
-
-enum ConnectedStatus: UInt8 {
-    case OtherPeripheralDisconnected = 0
-    case OtherPeripheralConnected = 1
-    case LeConnectionParameterUpdate = 2
-}
-
 struct AudioControlPointStart {
     let opcode: UInt8
-    let audiotype: AudioType
-    let codec: Codec
+    let audiotype: UInt8
+    let codec: UInt8
     let volume: Int8
-    let otherstate: OtherState
+    let otherstate: UInt8
 
-    init?(codecId: Codec, audioType: AudioType, volumeLevel: Int8, otherState: OtherState) {
-        opcode = 1
+    init?(codecId: UInt8, audioType: UInt8, volumeLevel: Int8, otherState: UInt8) {
+        opcode = CONTROL_POINT_OP_START
         audiotype = audioType
         codec = codecId
         volume = volumeLevel
@@ -52,14 +29,14 @@ struct AudioControlPointStart {
     }
     
     func asData() -> Data {
-        return Data([opcode, codec.rawValue, audiotype.rawValue, UInt8(volume), otherstate.rawValue])
+        return Data([opcode, codec, audiotype, uint8(volume), otherstate])
     }
 }
 
 struct AudioControlPointStop {
     let opcode: UInt8
     init?() {
-        opcode = 2
+        opcode = CONTROL_POINT_OP_STOP
     }
     
     func asData() -> Data {
@@ -69,13 +46,13 @@ struct AudioControlPointStop {
 
 struct AudioControlPointStatus {
     let opcode: UInt8
-    let connected: ConnectedStatus
-    init?(connectedStatus: ConnectedStatus) {
+    let connected: UInt8
+    init?(connectedStatus: UInt8) {
         opcode = 3
         connected = connectedStatus
     }
     
     func asData() -> Data {
-        return Data([opcode, connected.rawValue])
+        return Data([opcode, connected])
     }
 }
