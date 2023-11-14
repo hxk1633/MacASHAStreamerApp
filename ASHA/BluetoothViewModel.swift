@@ -415,7 +415,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     print("Starting stream...")
                     if let characteristic = audioControlPointCharacteristic {
                         print("Writing value for audio control characteristic")
-                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
                         if let audioStatus = audioStatusCharacteristic {
                             sleep(2)
                             hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
