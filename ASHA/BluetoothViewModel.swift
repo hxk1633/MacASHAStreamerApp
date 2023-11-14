@@ -415,10 +415,10 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     print("Starting stream...")
                     if let characteristic = audioControlPointCharacteristic {
                         print("Writing value for audio control characteristic")
-                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
+                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
                         if let audioStatus = audioStatusCharacteristic {
                             sleep(2)
-                           hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+                            hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
                         }
                     }
                 }
@@ -625,7 +625,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         self.l2capChannel?.outputStream.schedule(in: RunLoop.main, forMode: .default)
        // self.l2capChannel?.inputStream.open()
         self.l2capChannel?.outputStream.open()
-//        self.l2capChannel = channel
+//        self.l2capChannel = channe
 //        self.outputStream = channel.outputStream
 //        self.outputStream!.delegate = self
 //        self.outputStream!.schedule(in: .main, forMode: .default)
