@@ -147,7 +147,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 let n = buffer.frameLength
                 let c = buffer.stride
 
-                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 160) else {
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 320) else {
                     return;
                 }
                 
