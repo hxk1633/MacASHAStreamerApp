@@ -65,7 +65,6 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var outputStream: OutputStream?
     private var inputStream: InputStream?
     private var queueQueue = DispatchQueue(label: "queue queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem, target: nil)
-    private var outputData = Data()
     @Published var isConnected: Bool = false
     @Published var peripheralNames: [String] = []
     @Published var readOnlyPropertiesState: ReadOnlyProperties?
@@ -124,17 +123,20 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         if srate == 0 {
             return;
         }
+        
         // Create an AVAudioConverter to perform the downsampling
         let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false);
         
         guard let converter = AVAudioConverter(from: inputNode.inputFormat(forBus: 0), to:targetFormat!) else {
             return;
         }
+        print("passsed")
         let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
         g722_encode_init(encoderBuffer, 64000, 0)
         var seqCounter: UInt64 = 0
         let recordingFormat = inputNode.outputFormat(forBus: 0)
-            inputNode.installTap(onBus: 0,
+           
+        inputNode.installTap(onBus: 0,
           bufferSize: 320*srate/16000,
             format: recordingFormat) {
                 (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
@@ -150,7 +152,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: 320 * MemoryLayout<Float>.size)
                     chunkData.withUnsafeBytes { int16Buffer in
                         if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                                g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(320))
+                              let size =  g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(320))
+                            print(size)
                             }
                         }
                     // Convert the encodedData pointer to a Data object
@@ -172,7 +175,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 }
                 
             }
-
         try audioEngine.start()
     }
   
@@ -339,26 +341,30 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             let chunkData = Data(bytes: inputBuffer.int16ChannelData![0], count: chunkLength * MemoryLayout<Float>.size)
             // Create a new Data object for the audio chunk
             // Encode the audio chunk with G.722
+            var size: Int32 = 0;
             encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
             chunkData.withUnsafeBytes { int16Buffer in
                  if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                     g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(chunkLength))
+                    size = g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(chunkLength))
+                    print("Encoded size: \(size)")
+            
                  }
              }
-            
             // Convert the encodedData pointer to a Data object
-            let encodedChunk = Data(bytes: encodedData, count: 160) // Adjust count as needed
+            
+            
+            let encodedChunk = Data(bytes: encodedData, count: Int(size)) // Adjust count as needed
             
             // Append the sequence counter to the encoded chunk
             var chunkWithSeqCounter = Data()
-//            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
-            chunkWithSeqCounter.append(contentsOf: encodedChunk)
             withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+            chunkWithSeqCounter.append(contentsOf: encodedChunk)
+            //withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
 //            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
             // Append the G.722 encoded chunk with the sequence counter to the array
             send(data: chunkWithSeqCounter)
             encodedChunks.append(chunkWithSeqCounter)
-            
+            usleep(20000)// 20 ms
             // Increment the sequence counter
             seqCounter &+= 1
 
@@ -366,8 +372,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         }
 
         // Now, encodedChunks contains G.722 encoded Data objects with sequence counters for each 20ms chunk
-        print("audioChunks: \(encodedChunks)")
-        print("audioChunks size: \(encodedChunks.count)")
+        //print("audioChunks: \(encodedChunks)")
+        //print("audioChunks size: \(encodedChunks.count)")
         
         encoderBuffer.deallocate()
         encodedData.deallocate()
@@ -402,7 +408,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                         hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
                         if let audioStatus = audioStatusCharacteristic {
                             sleep(2)
-                           // hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+                           hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
                         }
                     }
                 }
@@ -410,7 +416,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 print("End Encountered")
             case Stream.Event.hasBytesAvailable:
                 print("Bytes are available")
-              /*  if let iStream = aStream as? InputStream {
+               if let iStream = aStream as? InputStream {
                     print("Input stream")
                     let bufLength = 1024
                     let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufLength)
@@ -419,49 +425,34 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     if let string = String(bytesNoCopy: buffer, length: bytesRead, encoding: .utf8, freeWhenDone: false) {
                         print("Received data: \(string)")
                     }
-                }*/
+                }
             case Stream.Event.hasSpaceAvailable:
                 print("Space is available, audio status \(String(describing: audioStatusPointState))")
-               // self.send()
+            
             case Stream.Event.errorOccurred:
                 print("Stream error")
-               /* let stopAudioStream = AudioControlPointStop()?.asData()
+                let stopAudioStream = AudioControlPointStop()?.asData()
                 if let stopStream = stopAudioStream {
                     if let characteristic = audioControlPointCharacteristic {
                         hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
                     }
-                }*/
+                }
             default:
                 print("Unknown stream event")
             }
     }
     
     private func send(data: Data) -> Void {
-        queueQueue.sync  {
-            self.outputData.append(data)
-        }
-        self.send()
-    }
-    
-    private func send() {
-        
-        guard let ostream = self.l2capChannel?.outputStream, !self.outputData.isEmpty, ostream.hasSpaceAvailable  else{
+        guard let ostream = self.l2capChannel?.outputStream, !data.isEmpty, ostream.hasSpaceAvailable  else{
+            print("Space avaliable:  \(self.l2capChannel?.outputStream.hasSpaceAvailable)")
+
             return
         }
         
-        let bytesWritten =  ostream.write(self.outputData)
+        let bytesWritten =  ostream.write(data)
         
         print("bytesWritten = \(bytesWritten)")
-//        self.sentDataCallback?(self,bytesWritten)
-        queueQueue.sync {
-            if bytesWritten < outputData.count {
-                outputData = outputData.advanced(by: bytesWritten)
-            } else {
-                outputData.removeAll()
-            }
-        }
     }
-
 //    func write(stuff: UnsafePointer<UInt8>, to channel: CBL2CAPChannel?, withMaxLength maxLength: Int) {
 //        let result = channel?.outputStream.write(stuff, maxLength: maxLength)
 //        print("Write result: \(String(describing: result))")
@@ -576,7 +567,12 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
                     print("writeAudioStream()")
                     sleep(5)
-                    writeAudioStream(from: "pcm1644m.wav")
+                    //writeAudioStream(from: "pcm1644m.wav")
+                    
+                    do{ try startRecording();}
+                    catch{
+                        print("Error during audio recording: \(error)")
+                    }
                 }
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {
@@ -613,11 +609,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
         print("Opened channel \(channel)")
         self.l2capChannel = channel
-        self.l2capChannel?.inputStream.delegate = self
+        //self.l2capChannel?.inputStream.delegate = self
         self.l2capChannel?.outputStream.delegate = self
-        self.l2capChannel?.inputStream.schedule(in: RunLoop.main, forMode: .default)
+       // self.l2capChannel?.inputStream.schedule(in: RunLoop.main, forMode: .default)
         self.l2capChannel?.outputStream.schedule(in: RunLoop.main, forMode: .default)
-        self.l2capChannel?.inputStream.open()
+       // self.l2capChannel?.inputStream.open()
         self.l2capChannel?.outputStream.open()
 //        self.l2capChannel = channel
 //        self.outputStream = channel.outputStream
