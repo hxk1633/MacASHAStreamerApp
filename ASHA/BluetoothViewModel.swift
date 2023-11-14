@@ -63,6 +63,7 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var volumeCharacteristic: CBCharacteristic?
     private var audioStatusCharacteristic: CBCharacteristic?
     private var outputStream: OutputStream?
+    private let audioEngine = AVAudioEngine()
     private var inputStream: InputStream?
     private var queueQueue = DispatchQueue(label: "queue queue", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem, target: nil)
     @Published var isConnected: Bool = false
@@ -111,11 +112,10 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
 }
 
 extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothHostControllerDelegate {
+   
 
 
     func startRecording() throws {
-
-        let audioEngine = AVAudioEngine()
 
         let inputNode = audioEngine.inputNode
         let srate:UInt32 = UInt32(inputNode.inputFormat(forBus: 0).sampleRate)
@@ -127,27 +127,33 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         // Create an AVAudioConverter to perform the downsampling
         let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false);
         
-        guard let converter = AVAudioConverter(from: inputNode.inputFormat(forBus: 0), to:targetFormat!) else {
-            return;
-        }
-        print("passsed")
+                print("passsed")
         let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
         g722_encode_init(encoderBuffer, 64000, 0)
         var seqCounter: UInt64 = 0
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-           
+        let recordingFormat = inputNode.inputFormat(forBus: 0)
+        guard let converter = AVAudioConverter(from: recordingFormat, to:targetFormat!) else {
+            return;
+        }
+
         inputNode.installTap(onBus: 0,
           bufferSize: 320*srate/16000,
             format: recordingFormat) {
                 (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
+            let inputCallback: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+                outStatus.pointee = AVAudioConverterInputStatus.haveData
+                return buffer
+            }
                 let n = buffer.frameLength
                 let c = buffer.stride
-                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 320) else {
+
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: 160) else {
                     return;
                 }
                 
                 do {
-                    try converter.convert(to: downsampledBuffer, from: buffer)
+                    let status = converter.convert(to: downsampledBuffer, error: nil, withInputFrom: inputCallback)
+                    print (downsampledBuffer.frameLength)
                     let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
                     let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: 320 * MemoryLayout<Float>.size)
                     chunkData.withUnsafeBytes { int16Buffer in
@@ -175,6 +181,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 }
                 
             }
+        audioEngine.prepare()
         try audioEngine.start()
     }
   
