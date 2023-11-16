@@ -84,8 +84,7 @@ class BluetoothViewModel: NSObject, ObservableObject {
         self.hciController = IOBluetoothHostController.default()
         //        self.delegate = [[HCIDelegate alloc] init];
         //        self.hciController.delegate = self.delegate;
-        do{
-            try  startRecording() }catch{ }
+       // do{try  startRecording() }catch{ }
     }
 }
 
