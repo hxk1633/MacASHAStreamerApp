@@ -340,6 +340,22 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         return newBuffer
     }
     
+    func segment(of buffer: AVAudioPCMBuffer, from startFrame: AVAudioFramePosition, to endFrame: AVAudioFramePosition) -> AVAudioPCMBuffer? {
+        let framesToCopy = AVAudioFrameCount(endFrame - startFrame)
+        guard let segment = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: framesToCopy) else { return nil }
+
+        let sampleSize = buffer.format.streamDescription.pointee.mBytesPerFrame
+
+        let srcPtr = UnsafeMutableAudioBufferListPointer(buffer.mutableAudioBufferList)
+        let dstPtr = UnsafeMutableAudioBufferListPointer(segment.mutableAudioBufferList)
+        for (src, dst) in zip(srcPtr, dstPtr) {
+            memcpy(dst.mData, src.mData?.advanced(by: Int(startFrame) * Int(sampleSize)), Int(framesToCopy) * Int(sampleSize))
+        }
+
+        segment.frameLength = framesToCopy
+        return segment
+    }
+    
     func writeAudioStream(from inputPath: String) -> [Data] {
         print("inputPath: \(inputPath)")
         
@@ -372,11 +388,13 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         var encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160)
         let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
         g722_encode_init(encoderBuffer, 64000, 0)
-
         while startIndex < inputBuffer.frameLength {
             let endIndex = min(startIndex + chunkSizeInFrames, Int(inputBuffer.frameLength))
             let chunkLength = endIndex - startIndex
-            let chunkData = Data(bytes: inputBuffer.int16ChannelData![0], count: chunkLength * MemoryLayout<Float>.size)
+            var chunkData: Data = Data()
+            if let segment = segment(of: inputBuffer, from: AVAudioFramePosition(startIndex), to: AVAudioFramePosition(endIndex)) {
+                chunkData = Data(bytes: segment.int16ChannelData![0], count: chunkLength * MemoryLayout<UInt16>.size)
+            }
             // Create a new Data object for the audio chunk
             // Encode the audio chunk with G.722
             var size: Int32 = 0;
@@ -605,10 +623,20 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 audioStatusPointState = audioStatusPoint(from: characteristic)
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
+//                    do{
+//                        try startRecording();
+//                    }
+//                    catch{
+//                        print("Error during audio recording: \(error)")
+//                    }
+                    var counter: UInt64 = 0
                     for frame in encodedData! {
-                        print("Frame: \(frame)")
-                        usleep(20000) // 20ms wait
-                        self.send(data: frame)
+                        if counter != 0 {
+                            print("Frame \(counter): \(frame)")
+                            usleep(20000) // 20ms wait
+                            self.send(data: frame)
+                        }
+                        counter += 1
                     }
                 }
 //            writeAudioStream(from: "pcm1644m.wav")
@@ -646,10 +674,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         print("Peripheral successfully set value for characteristic: \(characteristic)")
         switch characteristic.uuid {
             case audioControlPointCharacteristicCBUUID:
-                self.encodedData = writeAudioStream(from: "pcm1644m.wav")
+                self.encodedData = writeAudioStream(from: "batman_theme_x.wav")
                 self.send(data: encodedData![0])
                 if let audioStatus = audioStatusCharacteristic {
-                    hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+                    hearingDevicePeripheral?.readValue(for: audioStatus)
+//                    hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
                 }
             default:
                 print("Unhandled Characteristic UUID: \(characteristic.uuid)")
