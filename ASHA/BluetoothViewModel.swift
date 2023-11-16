@@ -84,7 +84,7 @@ class BluetoothViewModel: NSObject, ObservableObject {
         self.hciController = IOBluetoothHostController.default()
         //        self.delegate = [[HCIDelegate alloc] init];
         //        self.hciController.delegate = self.delegate;
-       // do{try  startRecording() }catch{ }
+        //do{try  startRecording() }catch{ }
     }
 }
 
@@ -167,14 +167,12 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             while startIndex < buffer.frameLength {
                 let endIndex = min(startIndex + buffersize, Int(buffer.frameLength))
                 let chunkLength = endIndex - startIndex
-                
-                let n = chunkLength
                 let inputCallback: AVAudioConverterInputBlock = { inNumPackets, outStatus in
                     outStatus.pointee = AVAudioConverterInputStatus.haveData
                     return  self.segment(of: buffer, from: AVAudioFramePosition(startIndex), to: AVAudioFramePosition(endIndex))
                 }
 
-                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: UInt32(n)) else {
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: UInt32(targetFormat.unsafelyUnwrapped.sampleRate * 0.02)) else {
                     return;
                 }
                 
@@ -184,11 +182,11 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     print( "Downsampled PCM: \(downsampledBuffer.frameLength)")
                     
                     
-                    let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
-                    let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: 320 * MemoryLayout<Int16>.size)
+                    let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(downsampledBuffer.frameLength/2)) // Adjust capacity as needed
+                    let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: Int(downsampledBuffer.frameLength) * MemoryLayout<Int16>.size)
                     chunkData.withUnsafeBytes { int16Buffer in
                         if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                            let size =  g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(320))
+                            let size =  g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(downsampledBuffer.frameLength))
                             print( "g722 size: \(size)")
                         }
                     }
@@ -339,22 +337,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         }
         return newBuffer
     }
-    
-//    func segment(of buffer: AVAudioPCMBuffer, from startFrame: AVAudioFramePosition, to endFrame: AVAudioFramePosition) -> AVAudioPCMBuffer? {
-//        let framesToCopy = AVAudioFrameCount(endFrame - startFrame)
-//        guard let segment = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: framesToCopy) else { return nil }
-//
-//        let sampleSize = buffer.format.streamDescription.pointee.mBytesPerFrame
-//
-//        let srcPtr = UnsafeMutableAudioBufferListPointer(buffer.mutableAudioBufferList)
-//        let dstPtr = UnsafeMutableAudioBufferListPointer(segment.mutableAudioBufferList)
-//        for (src, dst) in zip(srcPtr, dstPtr) {
-//            memcpy(dst.mData, src.mData?.advanced(by: Int(startFrame) * Int(sampleSize)), Int(framesToCopy) * Int(sampleSize))
-//        }
-//
-//        segment.frameLength = framesToCopy
-//        return segment
-//    }
+
     
     func writeAudioStream(from inputPath: String) -> [Data] {
         print("inputPath: \(inputPath)")
