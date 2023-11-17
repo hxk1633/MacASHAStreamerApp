@@ -42,6 +42,9 @@ let AUDIOTYPE_MEDIA: UInt8 = 0x03
 let OTHER_SIDE_NOT_STREAMING: UInt8 = 0x00
 let OTHER_SIDE_IS_STREAMING: UInt8 = 0x01
 
+// If true, use input microphone
+let AUDIO_MIC = false
+
 // This ADD_RENDER_DELAY_INTERVALS is the number of connection intervals when
 // the audio data packet is sent by Audio Engine to when the Hearing Aids device
 // receives it from the air. We assume that there are 2 data buffers queued from
@@ -84,7 +87,6 @@ class BluetoothViewModel: NSObject, ObservableObject {
         self.hciController = IOBluetoothHostController.default()
         //        self.delegate = [[HCIDelegate alloc] init];
         //        self.hciController.delegate = self.delegate;
-        //do{try  startRecording() }catch{ }
     }
 }
 
@@ -191,19 +193,26 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                         }
                     }
                     // Convert the encodedData pointer to a Data object
-                    let encodedChunk = Data(bytes: encodedData, count: 160) // Adjust count as needed
+                    let encodedChunk = Data(bytes: encodedData, count: 161) // Adjust count as needed
                     
                     // Append the sequence counter to the encoded chunk
                     var chunkWithSeqCounter = Data()
                     withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
                     chunkWithSeqCounter.append(contentsOf: encodedChunk)
-                    //            withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
+                    // withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
                     // Append the G.722 encoded chunk with the sequence counter to the array
+//                    let metaData = Data([chunkWithSeqCounter.count, seqCounter])
+//                    self.send(data: metaData)
                     self.send(data: chunkWithSeqCounter);
                     //                    self.l2capChannel?.outputStream.write(chunkWithSeqCounter)
                     
                     // Increment the sequence counter
-                    seqCounter &+= 1
+                    if seqCounter == 255 {
+                        seqCounter &= 0
+                    } else {
+                        seqCounter &+= 1
+                    }
+//                    seqCounter &+= 1
                     startIndex = endIndex;
                     usleep(100000) // 20ms wait
                 } catch {
@@ -611,49 +620,37 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 audioStatusPointState = audioStatusPoint(from: characteristic)
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
-//                    do{
-//                        try startRecording();
-//                    }
-//                    catch{
-//                        print("Error during audio recording: \(error)")
-//                    }
-                    var seqCount: UInt8 = 0
-                    for (index, frame) in encodedData!.enumerated() {
-                        print("Frame \(index) sequence byte: \(seqCount): \(frame)")
-                        if index != 0 {
-                            let metaData = Data(value: [encodedData![index].count, seqCount])
-                            self.send(data: metaData)
-                            self.send(data: frame)
-                            usleep(20000) // 20ms wait
+                    if AUDIO_MIC {
+                        do{
+                            try startRecording();
                         }
-                        if seqCount == 255 {
-                            seqCount = 0
-                        } else {
-                            seqCount += 1
+                        catch{
+                            print("Error during audio recording: \(error)")
                         }
-                    }
-                    let stopAudioStream = AudioControlPointStop()?.asData()
-                    if let stopStream = stopAudioStream {
-                        if let characteristic = audioControlPointCharacteristic {
-                            hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+                    } else {
+                        var seqCount: UInt8 = 0
+                        for (index, frame) in encodedData!.enumerated() {
+                            print("Frame \(index) sequence byte: \(seqCount): \(frame)")
+                            if index != 0 {
+                                let metaData = Data(value: [encodedData![index].count, seqCount])
+                                self.send(data: metaData)
+                                self.send(data: frame)
+                                usleep(20000) // 20ms wait
+                            }
+                            if seqCount == 255 {
+                                seqCount = 0
+                            } else {
+                                seqCount += 1
+                            }
+                        }
+                        let stopAudioStream = AudioControlPointStop()?.asData()
+                        if let stopStream = stopAudioStream {
+                            if let characteristic = audioControlPointCharacteristic {
+                                hearingDevicePeripheral?.writeValue(stopStream, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+                            }
                         }
                     }
                 }
-//            writeAudioStream(from: "pcm1644m.wav")
-//                do{ try startRecording();}
-//                catch{
-//                    print("Error during audio recording: \(error)")
-//                }
-//                if audioStatusPointState == AudioStatusPoint.StatusOK {
-//                    print("writeAudioStream()")
-////                    sleep(5)
-////                    writeAudioStream(from: "pcm1644m.wav")
-//                    
-//                    do{ try startRecording();}
-//                    catch{
-//                        print("Error during audio recording: \(error)")
-//                    }
-//                }
             case lePsmOutPointCharacteristicCBUUID:
                 if let psmValue = psmIdentifier(from: characteristic) {
                     print(psmValue)
@@ -674,7 +671,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         print("Peripheral successfully set value for characteristic: \(characteristic)")
         switch characteristic.uuid {
             case audioControlPointCharacteristicCBUUID:
-//                print("encodedData \(encodedData)")
                 self.encodedData = writeAudioStream(from: "batman_theme_x.wav")
                 let metaData = Data(value: [encodedData![0].count, 0])
                 self.send(data: metaData)
