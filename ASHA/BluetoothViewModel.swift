@@ -142,6 +142,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
     func startRecording() throws {
 
+        let time:Double = 0.01;
         let inputNode = audioEngine.inputNode
         let srate = inputNode.inputFormat(forBus: 0).sampleRate
         print("sample rate = \(srate)")
@@ -159,7 +160,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         guard let converter = AVAudioConverter(from: recordingFormat, to:targetFormat!) else {
             return;
         }
-        let buffersize=Int(srate*0.01)
+        let buffersize=Int(srate * time)
         print("bufferSize \(buffersize)")
         inputNode.installTap(onBus: 0,
             bufferSize: UInt32( buffersize),
@@ -175,7 +176,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     return self.segment(of: buffer, from: AVAudioFramePosition(startIndex), to: AVAudioFramePosition(endIndex))
                 }
 
-                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: UInt32(targetFormat.unsafelyUnwrapped.sampleRate * 0.01)) else {
+                guard let downsampledBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat!, frameCapacity: UInt32(targetFormat.unsafelyUnwrapped.sampleRate * time)) else {
                     return;
                 }
                 
