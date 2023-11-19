@@ -95,8 +95,13 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
         if central.state == .poweredOn {
             self.centralManager?.scanForPeripherals(withServices: [ashaServiceCBUUID])
         }
+        if central.state == .unauthorized {
+            print("App is not authorized to use the Bluetooth Low Engery role")
+        }
+        if central.state == .unsupported {
+            print("This device does not support the Bluetooth low engery central role")
+        }
     }
-    
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         peripheralNames.append(peripheral.name ?? "Unnamed")
@@ -142,7 +147,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
     func startRecording() throws {
 
-        let time:Double = 0.01;
+        let time:Double = 0.02;
         let inputNode = audioEngine.inputNode
         let srate = inputNode.inputFormat(forBus: 0).sampleRate
         print("sample rate = \(srate)")
@@ -182,7 +187,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 
                 do {
                     let status = converter.convert(to: downsampledBuffer, error: nil, withInputFrom: inputCallback)
-                    print( "Downsample AVAudioConverterOutputStatus hasDaata: \(status.rawValue == 0)")
+                    print( "Downsample AVAudioConverterOutputStatus hasData: \(status.rawValue == 0)")
                     print( "Downsampled PCM: \(downsampledBuffer.frameLength)")
                     
                     var g722_size: Int32 = 0
@@ -213,7 +218,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     }
 //                    seqCounter &+= 1
                     startIndex = endIndex;
-//                    usleep(20000) // 20ms wait
+                    usleep(20000) // 20ms wait
                 } catch {
                     print("Error during audio conversion: \(error)")
                 }
@@ -529,6 +534,10 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 audioStatusPointState = audioStatusPoint(from: characteristic)
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
+                    let statusUpdate = AudioControlPointStatus(connectedStatus: 0x02)
+                    if let status = statusUpdate {
+                        hearingDevicePeripheral?.writeValue(status.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+                    }
                     if AUDIO_MIC {
                         do{
                             try startRecording();
@@ -574,8 +583,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         print("Peripheral successfully set value for characteristic: \(characteristic)")
         switch characteristic.uuid {
             case audioControlPointCharacteristicCBUUID:
-                self.encodedData = writeAudioStream(from: "batman_theme_x.wav")
-                self.send(data: encodedData![0])
+//                self.encodedData = writeAudioStream(from: "batman_theme_x.wav")
+//                self.send(data: encodedData![0])
                 if let audioStatus = audioStatusCharacteristic {
                     hearingDevicePeripheral?.readValue(for: audioStatus)
                 }
