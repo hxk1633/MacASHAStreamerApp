@@ -147,7 +147,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
     func startRecording() throws {
 
-        let time:Double = 0.1;
+        let time:Double = 0.02;
         let inputNode = audioEngine.inputNode
         let srate = inputNode.inputFormat(forBus: 0).sampleRate
         print("sample rate = \(srate)")
@@ -379,7 +379,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 print("Stream is open")
                 let codec = CODEC_G722_16KHZ
                 let audiotype = AUDIOTYPE_MEDIA
-            let volume :Int8 = 0
+
+            let volume :Int8 = VOLUME_UNKNOWN
                 let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
                 if let startStream = startAudioStream {
                     print("Starting stream...")
@@ -535,7 +536,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 audioStatusPointState = audioStatusPoint(from: characteristic)
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
-                    let statusUpdate = AudioControlPointStatus(connectedStatus: 0x02)
+                    let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
                     if let status = statusUpdate {
                         hearingDevicePeripheral?.writeValue(status.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
                     }
