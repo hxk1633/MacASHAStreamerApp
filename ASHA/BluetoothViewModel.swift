@@ -218,7 +218,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 //                    seqCounter &+= 1
                     startIndex = endIndex;
                     if( buffersize < buffer.frameLength){
-                        usleep(UInt32(time*100)) // 20ms wait
+                        usleep(UInt32(time*1000000)) // 20ms wait
                     }
                 } catch {
                     print("Error during audio conversion: \(error)")
