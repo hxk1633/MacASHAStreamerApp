@@ -147,7 +147,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
     func startRecording() throws {
 
-        let time:Double = 0.02;
+        let time:Double = 0.1;
         let inputNode = audioEngine.inputNode
         let srate = inputNode.inputFormat(forBus: 0).sampleRate
         print("sample rate = \(srate)")
@@ -209,7 +209,6 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     // Append the G.722 encoded chunk with the sequence counter to the array
                     self.send(data: chunkWithSeqCounter);
                     // self.l2capChannel?.outputStream.write(chunkWithSeqCounter)
-                    
                     // Increment the sequence counter
                     if seqCounter == 255 {
                         seqCounter &= 0
@@ -218,7 +217,9 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     }
 //                    seqCounter &+= 1
                     startIndex = endIndex;
-                    usleep(20000) // 20ms wait
+                    if( buffersize < buffer.frameLength){
+                        usleep(UInt32(time*100)) // 20ms wait
+                    }
                 } catch {
                     print("Error during audio conversion: \(error)")
                 }
@@ -378,7 +379,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 print("Stream is open")
                 let codec = CODEC_G722_16KHZ
                 let audiotype = AUDIOTYPE_MEDIA
-                let volume = VOLUME_UNKNOWN
+            let volume :Int8 = 0
                 let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
                 if let startStream = startAudioStream {
                     print("Starting stream...")
