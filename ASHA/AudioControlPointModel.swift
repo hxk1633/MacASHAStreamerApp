@@ -47,12 +47,15 @@ struct AudioControlPointStop {
 struct AudioControlPointStatus {
     let opcode: UInt8
     let connected: UInt8
-    init?(connectedStatus: UInt8) {
-        opcode = 3
+
+    let interval: UInt8
+    init?(connectedStatus: UInt8, intervalCurrent:UInt8) {
+        opcode = CONTROL_POINT_OP_STATE_CHANGE
         connected = connectedStatus
+         interval = intervalCurrent
     }
     
     func asData() -> Data {
-        return Data([opcode, connected])
+        return Data([opcode, connected, interval])
     }
 }
