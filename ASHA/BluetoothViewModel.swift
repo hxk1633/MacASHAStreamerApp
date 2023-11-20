@@ -377,21 +377,14 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         switch eventCode {
             case Stream.Event.openCompleted:
                 print("Stream is open")
-                let codec = CODEC_G722_16KHZ
-                let audiotype = AUDIOTYPE_MEDIA
+            
+            let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
 
-            let volume :Int8 = VOLUME_UNKNOWN
-                let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
-                if let startStream = startAudioStream {
-                    print("Starting stream...")
-                    if let characteristic = audioControlPointCharacteristic {
-                        print("Writing value for audio control characteristic")
-                        hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
-//                        if let audioStatus = audioStatusCharacteristic {
-//                            hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
-//                        }
-                    }
-                }
+            
+            if let characteristic = audioControlPointCharacteristic {
+                if let status = statusUpdate {
+                hearingDevicePeripheral?.writeValue(status.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+            }}
             case Stream.Event.endEncountered:
                 print("End Encountered")
             case Stream.Event.hasBytesAvailable:
@@ -528,18 +521,17 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         BluetoothHCIRequestDelete(request);*/
     }
     
+    
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         switch characteristic.uuid {
             case readOnlyPropertiesCharacteristicCBUUID:
                 readOnlyPropertiesState = readOnlyProperties(from: characteristic)
             case audioStatusCharacteristicCBUUID:
+            
                 audioStatusPointState = audioStatusPoint(from: characteristic)
                 print("audio status update: \(String(describing: audioStatusPointState))")
                 if audioStatusPointState == AudioStatusPoint.StatusOK {
-                    let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
-                    if let status = statusUpdate {
-                        hearingDevicePeripheral?.writeValue(status.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
-                    }
+                    
                     if AUDIO_MIC {
                         do{
                             try startRecording();
@@ -598,6 +590,21 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
     func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
         print("Peripheral \(peripheral) is again ready to send characteristic updates")
+        let codec = CODEC_G722_16KHZ
+        let audiotype = AUDIOTYPE_MEDIA
+
+    let volume :Int8 = VOLUME_UNKNOWN
+        let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
+        if let startStream = startAudioStream {
+            if let characteristic = audioControlPointCharacteristic {
+                print("Writing value for audio control characteristic")
+                
+                hearingDevicePeripheral?.writeValue(startStream.asData(), for: characteristic, type: CBCharacteristicWriteType.withResponse)
+    //                        if let audioStatus = audioStatusCharacteristic {
+    //                            hearingDevicePeripheral?.setNotifyValue(true, for: audioStatus)
+    //                        }
+            }
+        }
     }
  
     func peripheral(_ peripheral: CBPeripheral, didOpen channel: CBL2CAPChannel?, error: Error?) {
