@@ -42,6 +42,7 @@ let AUDIOTYPE_MEDIA: UInt8 = 0x03
 let OTHER_SIDE_NOT_STREAMING: UInt8 = 0x00
 let OTHER_SIDE_IS_STREAMING: UInt8 = 0x01
 
+let G722_PACKED:Int32 = 0x0002
 // If true, use input microphone
 let AUDIO_MIC = true
 
@@ -158,8 +159,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         // Create an AVAudioConverter to perform the downsampling
         let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false);
         print("passsed")
-        let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
-        g722_encode_init(encoderBuffer, 64000, 0)
+        var encoderState = g722_encode_init(nil, 64000, G722_PACKED)
         var seqCounter: UInt8 = 0
         let recordingFormat = inputNode.inputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: recordingFormat, to:targetFormat!) else {
@@ -195,7 +195,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: Int(downsampledBuffer.frameLength) * MemoryLayout<Int16>.size)
                     chunkData.withUnsafeBytes { int16Buffer in
                         if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                            g722_size =  g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(downsampledBuffer.frameLength))
+                            g722_size =  g722_encode(encoderState, encodedData, int16Pointer, Int32(downsampledBuffer.frameLength))
                             print( "g722 size: \(g722_size)")
                         }
                     }
@@ -321,8 +321,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
         // Initialize G.722 encoder
         var encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160)
-        let encoderBuffer = UnsafeMutablePointer<g722_encode_state_t>.allocate(capacity: 1)
-        g722_encode_init(encoderBuffer, 64000, 0)
+        var encoderState = g722_encode_init(nil, 64000, G722_PACKED)
         while startIndex < inputBuffer.frameLength {
             let endIndex = min(startIndex + chunkSizeInFrames, Int(inputBuffer.frameLength))
             let chunkLength = endIndex - startIndex
@@ -336,7 +335,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: 160) // Adjust capacity as needed
             chunkData.withUnsafeBytes { int16Buffer in
                  if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                    size = g722_encode(encoderBuffer, encodedData, int16Pointer, Int32(chunkLength))
+                    size = g722_encode(encoderState, encodedData, int16Pointer, Int32(chunkLength))
                     print("Encoded size: \(size)")
             
                  }
@@ -365,7 +364,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         print("audioChunks: \(encodedChunks)")
         print("audioChunks size: \(encodedChunks.count)")
         
-        encoderBuffer.deallocate()
+        //encoderBuffer.deallocate()
         encodedData.deallocate()
     
         return encodedChunks
