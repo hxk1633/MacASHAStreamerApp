@@ -7,6 +7,7 @@
 import Foundation
 import CoreBluetooth
 import AVFoundation
+import IOBluetooth
 
 
 // The MIN_CE_LEN parameter for Connection Parameters based on the current
@@ -42,7 +43,7 @@ let AUDIOTYPE_MEDIA: UInt8 = 0x03
 let OTHER_SIDE_NOT_STREAMING: UInt8 = 0x00
 let OTHER_SIDE_IS_STREAMING: UInt8 = 0x01
 
-let G722_PACKED:Int32 = 0x0002
+let G722_PACKED: Int32 = 0x0002
 // If true, use input microphone
 let AUDIO_MIC = true
 
@@ -64,7 +65,8 @@ class BluetoothViewModel: NSObject, ObservableObject {
     private var hciController: IOBluetoothHostController?
     private var centralManager: CBCentralManager?
     private var peripheralManager: CBPeripheralManager?
-    private var l2capChannel: CBL2CAPChannel?
+//    private var l2capChannel: CBL2CAPChannel?
+    private var l2capChannel: IOBluetoothL2CAPChannel?
     private var hearingDevicePeripheral: CBPeripheral?
     private var audioControlPointCharacteristic: CBCharacteristic?
     private var volumeCharacteristic: CBCharacteristic?
@@ -128,7 +130,7 @@ extension BluetoothViewModel: CBCentralManagerDelegate {
      
 }
 
-extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothHostControllerDelegate {
+extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothHostControllerDelegate, IOBluetoothL2CAPChannelDelegate {
    
     func segment(of buffer: AVAudioPCMBuffer, from startFrame: AVAudioFramePosition, to endFrame: AVAudioFramePosition) -> AVAudioPCMBuffer? {
         let framesToCopy = AVAudioFrameCount(endFrame - startFrame)
@@ -145,10 +147,14 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         segment.frameLength = framesToCopy
         return segment
     }
+    
+    func l2capChannelOpenComplete(_ l2capChannel: IOBluetoothL2CAPChannel!, status error: IOReturn) {
+        print("l2cap Channel Open Complete")
+    }
 
     func startRecording() throws {
 
-        let time:Double = 0.02;
+        let time: Double = 0.02;
         let inputNode = audioEngine.inputNode
         let srate = inputNode.inputFormat(forBus: 0).sampleRate
         print("sample rate = \(srate)")
@@ -164,6 +170,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         let recordingFormat = inputNode.inputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: recordingFormat, to:targetFormat!) else {
             return;
+            
         }
         let buffersize=Int(srate * time)
         print("bufferSize \(buffersize)")
@@ -311,7 +318,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
 
         // Assuming you have an AVAudioPCMBuffer named audioBuffer
         let sampleRate = inputBuffer.format.sampleRate
-        let chunkSizeInFrames = Int(0.01 * sampleRate) // 20ms in frames
+        let chunkSizeInFrames = Int(0.02 * sampleRate) // 20ms in frames
         print("chunkSizeInFrame: \(chunkSizeInFrames)")
 
         // Create an array to store the G.722 encoded chunks with sequence counters
@@ -377,9 +384,8 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             case Stream.Event.openCompleted:
                 print("Stream is open")
             
-            let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
+            let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE, intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
 
-            
             if let characteristic = audioControlPointCharacteristic {
                 if let status = statusUpdate {
                 hearingDevicePeripheral?.writeValue(status.asData(), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
@@ -414,16 +420,34 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             }
     }
     
-    private func send(data: Data) -> Void {
-        guard let ostream = self.l2capChannel?.outputStream, !data.isEmpty, ostream.hasSpaceAvailable  else{
-            print("Space avaliable:  \(self.l2capChannel?.outputStream.hasSpaceAvailable)")
+    private func send(data: Data) {
+        // Assuming self.l2capChannel is an IOBluetoothL2CAPChannel
+        guard let l2capChannel = self.l2capChannel else {
+            // Handle the case where l2capChannel is nil, if needed
             return
         }
-        
-        let bytesWritten =  ostream.write(data)
-        
-        print("bytesWritten = \(bytesWritten)")
+
+        // Convert Data to UnsafeMutableRawPointer
+        let dataPointer = UnsafeMutableRawPointer(mutating: (data as NSData).bytes)
+
+        // Get the length of the data
+        let dataLength = UInt16(data.count)
+
+        // Call the writeSync method
+        l2capChannel.writeSync(dataPointer, length: dataLength)
     }
+    
+//    private func send(data: Data) -> Void {
+//        self.l2capChannel?.writeSync(<#T##data: UnsafeMutableRawPointer!##UnsafeMutableRawPointer!#>, length: <#T##UInt16#>)
+//        guard let ostream = self.l2capChannel?.outputStream, !data.isEmpty, ostream.hasSpaceAvailable  else{
+//            print("Space avaliable:  \(self.l2capChannel?.outputStream.hasSpaceAvailable)")
+//            return
+//        }
+//        
+//        let bytesWritten =  ostream.write(data)
+//        
+//        print("bytesWritten = \(bytesWritten)")
+//    }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
@@ -469,7 +493,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 print("No devices")
                 return
             }
-            for item in devices {
+        for item in devices {
                 if let device = item as? IOBluetoothDevice {
                     print("Name: \(device.name)");
                     print("Paired?: \(device.isPaired())")
@@ -542,12 +566,12 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                         var seqCount: UInt8 = 0
                         for (index, frame) in encodedData!.enumerated() {
                             print("Frame \(index) sequence byte: \(seqCount): \(frame)")
-                            if index != 0 {
-                                let metaData = Data(value: [encodedData![index].count, seqCount])
-                                self.send(data: metaData)
+//                            if index != 0 {
+//                                let metaData = Data(value: [encodedData![index].count, seqCount])
+//                                self.send(data: metaData)
                                 self.send(data: frame)
                                 usleep(20000) // 20ms wait
-                            }
+//                            }
                             if seqCount == 255 {
                                 seqCount = 0
                             } else {
@@ -560,7 +584,30 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                 if let psmValue = psmIdentifier(from: characteristic) {
                     print(psmValue)
                     psm = psmValue
-                  peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
+                    print("Bluetooth devices:")
+                    guard let devices = IOBluetoothDevice.pairedDevices() else {
+                        print("No devices")
+                        return
+                    }
+                    for item in devices {
+                        if let device = item as? IOBluetoothDevice {
+                            print("Name: \(String(describing: device.name))");
+                            print("Paired?: \(device.isPaired())")
+                            print("Connected?: \(device.isConnected())")
+
+                            // todo implemeent this if block
+                            // confirmthis is correct
+                            if(device.isConnected() && device.isPaired() && device.name == hearingDevicePeripheral?.name){
+                                var channelPointer: AutoreleasingUnsafeMutablePointer<IOBluetoothL2CAPChannel?>? = nil
+
+                                self.l2capChannel?.setDelegate(self)
+
+                                // Pass the address of channelPointer to openL2CAPChannelSync
+                                device.openL2CAPChannelSync(channelPointer, withPSM: psm!, delegate: self.l2capChannel?.delegate())
+                            }
+                        }
+                    }
+//                  peripheral.openL2CAPChannel(CBL2CAPPSM(psmValue))
                   //  leUpdateConnectionCommand()
                 }
             default:
@@ -591,8 +638,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         print("Peripheral \(peripheral) is again ready to send characteristic updates")
         let codec = CODEC_G722_16KHZ
         let audiotype = AUDIOTYPE_MEDIA
-
-    let volume :Int8 = VOLUME_UNKNOWN
+        let volume :Int8 = VOLUME_UNKNOWN
         let startAudioStream = AudioControlPointStart(codecId: codec, audioType: audiotype, volumeLevel: volume, otherState: OTHER_SIDE_NOT_STREAMING)
         if let startStream = startAudioStream {
             if let characteristic = audioControlPointCharacteristic {
@@ -606,21 +652,21 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         }
     }
  
-    func peripheral(_ peripheral: CBPeripheral, didOpen channel: CBL2CAPChannel?, error: Error?) {
-        if let error = error {
-               print("Error opening l2cap channel - \(error.localizedDescription)")
-               return
-        }
-        guard let channel = channel else {
-           return
-        }
-
-        print("Opened channel \(channel)")
-        self.l2capChannel = channel
-        self.l2capChannel?.outputStream.delegate = self
-        self.l2capChannel?.outputStream.schedule(in: RunLoop.main, forMode: .default)
-        self.l2capChannel?.outputStream.open()
-    }
+//    func peripheral(_ peripheral: CBPeripheral, didOpen channel: CBL2CAPChannel?, error: Error?) {
+//        if let error = error {
+//               print("Error opening l2cap channel - \(error.localizedDescription)")
+//               return
+//        }
+//        guard let channel = channel else {
+//           return
+//        }
+//
+//        print("Opened channel \(channel)")
+//        self.l2capChannel = channel
+//        self.l2capChannel?.outputStream.delegate = self
+//        self.l2capChannel?.outputStream.schedule(in: RunLoop.main, forMode: .default)
+//        self.l2capChannel?.outputStream.open()
+//    }
     
     public func setVolume(volumeLevel: UInt8) {
         print("setVolume called with \(volumeLevel)")
