@@ -190,24 +190,12 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                     print( "Downsample AVAudioConverterOutputStatus hasData: \(status.rawValue == 0)")
                     print( "Downsampled PCM: \(downsampledBuffer.frameLength)")
                     
-                    var g722_size: Int32 = 0
-                    let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(downsampledBuffer.frameLength/2)) // Adjust capacity as needed
-                    let chunkData = Data(bytes: downsampledBuffer.int16ChannelData![0], count: Int(downsampledBuffer.frameLength) * MemoryLayout<Int16>.size)
-                    chunkData.withUnsafeBytes { int16Buffer in
-                        if let int16Pointer = int16Buffer.bindMemory(to: Int16.self).baseAddress {
-                            g722_size =  g722_encode(encoderState, encodedData, int16Pointer, Int32(downsampledBuffer.frameLength))
-                            print( "g722 size: \(g722_size)")
-                        }
-                    }
-                    // Convert the encodedData pointer to a Data object
-                    let encodedChunk = Data(bytes: encodedData, count: Int(g722_size)) // Adjust count as needed
-                    
-                    // Append the sequence counter to the encoded chunk
-                    var chunkWithSeqCounter = Data()
-                    withUnsafePointer(to: &seqCounter) { chunkWithSeqCounter.append(UnsafeBufferPointer(start: $0, count: 1)) }
-                    chunkWithSeqCounter.append(contentsOf: encodedChunk)
-                    // Append the G.722 encoded chunk with the sequence counter to the array
-                    self.send(data: chunkWithSeqCounter);
+                    let encodedData = UnsafeMutablePointer<UInt8>.allocate(capacity: Int((downsampledBuffer.frameLength/2)+1))
+                    encodedData[0] = seqCounter
+                    let chunkData =  downsampledBuffer.int16ChannelData![0]
+                    let  g722_size =  g722_encode(encoderState, encodedData+1, chunkData, Int32(downsampledBuffer.frameLength))
+                    print( "g722 size: \(g722_size)")
+                    self.send(data: encodedData, maxLength: Int(g722_size+1))
                     // self.l2capChannel?.outputStream.write(chunkWithSeqCounter)
                     // Increment the sequence counter
                     if seqCounter == 255 {
@@ -424,6 +412,18 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
         
         print("bytesWritten = \(bytesWritten)")
     }
+    private func send(data: UnsafePointer<UInt8>, maxLength: Int) -> Void {
+        guard let ostream = self.l2capChannel?.outputStream, maxLength != 0, ostream.hasSpaceAvailable  else{
+            print("Space avaliable:  \(self.l2capChannel?.outputStream.hasSpaceAvailable)")
+            return
+        }
+        
+        let bytesWritten =  ostream.write(data, maxLength:maxLength)
+        
+        print("bytesWritten = \(bytesWritten)")
+    }
+    
+
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
