@@ -595,15 +595,17 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
                             print("Paired?: \(device.isPaired())")
                             print("Connected?: \(device.isConnected())")
 
-                            // todo implemeent this if block
-                            // confirmthis is correct
                             if(device.isConnected() && device.isPaired() && device.name == hearingDevicePeripheral?.name){
-                                var channelPointer: AutoreleasingUnsafeMutablePointer<IOBluetoothL2CAPChannel?>? = nil
+                                let channelPointer: AutoreleasingUnsafeMutablePointer<IOBluetoothL2CAPChannel?>? = nil
 
                                 self.l2capChannel?.setDelegate(self)
 
                                 // Pass the address of channelPointer to openL2CAPChannelSync
-                                device.openL2CAPChannelSync(channelPointer, withPSM: psm!, delegate: self.l2capChannel?.delegate())
+                                let result = device.openL2CAPChannelSync(channelPointer, withPSM: psm!, delegate: self.l2capChannel?.delegate())
+                                self.l2capChannel = channelPointer?.pointee
+                                guard result == kIOReturnSuccess else { // if timeout, show dialog instead of fatalError?
+                                    fatalError("Failed to open l2cap channel PSM: \(String(describing: psm)) result: \(result)")
+                                }
                             }
                         }
                     }
