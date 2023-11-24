@@ -166,6 +166,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             return;
         }
         let buffersize=Int(srate * time)
+        setVolume(volumeLevel: 50)
         print("bufferSize \(buffersize)")
         inputNode.installTap(onBus: 0,
             bufferSize: UInt32( buffersize),
@@ -365,7 +366,7 @@ extension BluetoothViewModel: CBPeripheralDelegate, StreamDelegate, IOBluetoothH
             case Stream.Event.openCompleted:
                 print("Stream is open")
             
-            let statusUpdate = AudioControlPointStatus(connectedStatus: CONTROL_POINT_OP_STATE_CHANGE,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
+            let statusUpdate = AudioControlPointStatus(connectedStatus:  STATE_CHANGE_CONN_UPDATE ,intervalCurrent: UInt8(CONNECTION_INTERVAL_20MS_PARAM))
 
             
             if let characteristic = audioControlPointCharacteristic {
